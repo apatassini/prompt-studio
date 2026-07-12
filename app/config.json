@@ -2,5 +2,7 @@
   "agent_resident": "auto",
   "agent_resident_min_ram_gb": 40,
   "agent_cpu_moe": 999,
-  "agent_cpu_moe_fast": 30
+  "agent_cpu_moe_fast": 30,
+  "github_repo": "",
+  "auto_update": false
 }

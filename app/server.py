@@ -14,18 +14,28 @@ import re
 import random
 import shutil
 import subprocess
+import sys
+import tempfile
 import threading
 import time
 import urllib.request
 import urllib.parse
 import urllib.error
 import uuid
+import zipfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 # ------------------------------------------------------------------ config
 APP_PORT = 8500
 LLAMA_PORT = 8600
 COMFY_URL = "http://127.0.0.1:8188"
+
+# Versione dell'app: confrontata col tag dell'ultima Release su GitHub per l'auto-aggiornamento.
+# Per pubblicare una nuova versione: alza APP_VERSION, committa, crea una Release con tag "vX.Y.Z".
+APP_VERSION = "1.0.0"
+# Repository GitHub da cui scaricare gli aggiornamenti ("utente/repo"). Override in config.json
+# ("github_repo") o dalla finestra "Modelli" nell'interfaccia. Vuoto = auto-aggiornamento disattivato.
+GITHUB_REPO_DEFAULT = ""
 LLAMA_URL = f"http://127.0.0.1:{LLAMA_PORT}"
 
 # Percorsi relativi alla posizione di questo file: <root>\LLM\app\server.py
@@ -2106,6 +2116,201 @@ def get_config():
         return {}
 
 
+# ------------------------------------------------------------------ auto-aggiornamento da GitHub
+# Confronta APP_VERSION con l'ultima Release del repo GitHub configurato; se piu' recente,
+# scarica il pacchetto, fa un backup, sovrascrive SOLO i file di codice (preserva config.json,
+# characters.json, presets.json, jobs_state.json) e riavvia il solo server dell'app.
+_UPDATE = {"phase": "idle", "msg": "", "error": "", "latest": None, "notes": "",
+           "url": "", "is_asset": False, "checked_at": 0}
+_ACTIVE_JOB_PHASES = {"queued", "llm_loading", "prompting", "generating", "evaluating"}
+
+
+def _github_repo():
+    return (get_config().get("github_repo") or GITHUB_REPO_DEFAULT or "").strip().strip("/")
+
+
+def _parse_ver(v):
+    v = re.sub(r"^[vV]", "", (v or "").strip())
+    nums = re.findall(r"\d+", v)
+    return tuple(int(x) for x in nums[:4]) if nums else (0,)
+
+
+def _ver_newer(a, b):
+    """a e' piu' recente di b?"""
+    pa, pb = list(_parse_ver(a)), list(_parse_ver(b))
+    n = max(len(pa), len(pb))
+    pa += [0] * (n - len(pa))
+    pb += [0] * (n - len(pb))
+    return pa > pb
+
+
+def _jobs_busy():
+    return any((j.get("phase") in _ACTIVE_JOB_PHASES) for j in jobs.values())
+
+
+def _gh_api(path):
+    repo = _github_repo()
+    if not repo:
+        raise RuntimeError("nessun repository GitHub configurato")
+    req = urllib.request.Request(
+        f"https://api.github.com/repos/{repo}{path}",
+        headers={"User-Agent": "PromptStudio-Updater",
+                 "Accept": "application/vnd.github+json"})
+    with urllib.request.urlopen(req, timeout=20) as r:
+        return json.loads(r.read().decode("utf-8"))
+
+
+def check_update():
+    """Interroga l'ultima Release e dice se c'e' un aggiornamento. Non modifica nulla."""
+    cfg = get_config()
+    repo = _github_repo()
+    base = {"current": APP_VERSION, "github_repo": repo,
+            "auto_update": bool(cfg.get("auto_update"))}
+    if not repo:
+        base.update({"configured": False, "update_available": False})
+        return base
+    try:
+        rel = _gh_api("/releases/latest")
+    except Exception as e:
+        base.update({"configured": True, "update_available": False, "error": str(e)})
+        return base
+    latest = rel.get("tag_name") or rel.get("name") or ""
+    notes = rel.get("body") or ""
+    asset_url = ""
+    for a in rel.get("assets", []):
+        if a.get("name", "").lower() == "app.zip":
+            asset_url = a.get("browser_download_url", "")
+            break
+    src_url = rel.get("zipball_url") or ""
+    avail = bool(latest) and _ver_newer(latest, APP_VERSION)
+    _UPDATE.update({"latest": latest, "notes": notes, "url": asset_url or src_url,
+                    "is_asset": bool(asset_url), "checked_at": time.time()})
+    base.update({"configured": True, "latest": latest, "update_available": avail,
+                 "notes": notes[:4000], "published_at": rel.get("published_at", ""),
+                 "html_url": rel.get("html_url", "")})
+    return base
+
+
+# Script updater standalone: gira DOPO l'uscita del server, copia i file e rilancia il server.
+_UPDATER_SRC = r'''
+import sys, os, time, shutil, socket, subprocess
+src_app, app_dir, py, server_py, port = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], int(sys.argv[5])
+# 1) attendi che il vecchio server esca (porta libera)
+for _ in range(80):
+    s = socket.socket(); s.settimeout(0.4)
+    free = s.connect_ex(("127.0.0.1", port)) != 0
+    s.close()
+    if free:
+        break
+    time.sleep(0.5)
+time.sleep(0.8)
+# 2) copia i file preservando i dati/impostazioni dell'utente
+KEEP = {"config.json", "characters.json", "presets.json", "jobs_state.json"}
+bak = os.path.join(os.path.dirname(app_dir), "app_update_backup")
+try:
+    if os.path.isdir(bak):
+        shutil.rmtree(bak, ignore_errors=True)
+    os.makedirs(bak, exist_ok=True)
+except Exception:
+    pass
+def copytree(src, dst):
+    for name in os.listdir(src):
+        if name == "__pycache__":
+            continue
+        s = os.path.join(src, name); d = os.path.join(dst, name)
+        if name in KEEP and os.path.exists(d):     # non toccare impostazioni/dati utente
+            continue
+        if os.path.isdir(s):
+            os.makedirs(d, exist_ok=True); copytree(s, d)
+        else:
+            try:
+                if os.path.exists(d):
+                    rel = os.path.relpath(d, app_dir)
+                    bd = os.path.join(bak, rel)
+                    os.makedirs(os.path.dirname(bd), exist_ok=True)
+                    shutil.copy2(d, bd)
+            except Exception:
+                pass
+            for _t in range(12):
+                try:
+                    shutil.copy2(s, d); break
+                except Exception:
+                    time.sleep(0.5)
+copytree(src_app, app_dir)
+# 3) rilancia il server (nascosto)
+flags = 0
+if os.name == "nt":
+    flags = 0x00000008 | 0x08000000   # DETACHED_PROCESS | CREATE_NO_WINDOW
+try:
+    subprocess.Popen([py, server_py], cwd=app_dir, creationflags=flags, close_fds=True)
+except Exception:
+    subprocess.Popen([py, server_py], cwd=app_dir)
+'''
+
+
+def _do_update():
+    """Scarica il pacchetto dell'ultima Release, prepara i file e lancia l'updater; poi esce."""
+    try:
+        _UPDATE.update({"phase": "downloading", "msg": "Scarico l'aggiornamento…", "error": ""})
+        url = _UPDATE.get("url")
+        if not url:
+            raise RuntimeError("URL aggiornamento mancante: esegui prima il controllo.")
+        tmp = tempfile.mkdtemp(prefix="ps_update_")
+        zip_path = os.path.join(tmp, "update.zip")
+        req = urllib.request.Request(url, headers={"User-Agent": "PromptStudio-Updater",
+                                                   "Accept": "application/octet-stream"})
+        with urllib.request.urlopen(req, timeout=180) as r, open(zip_path, "wb") as f:
+            shutil.copyfileobj(r, f)
+        _UPDATE.update({"phase": "applying", "msg": "Estraggo i file…"})
+        stage = os.path.join(tmp, "stage")
+        with zipfile.ZipFile(zip_path) as z:
+            z.extractall(stage)
+        # trova la cartella con server.py (asset flat, oppure sottocartella "app" dello zip sorgente)
+        src_app = None
+        if os.path.exists(os.path.join(stage, "server.py")):
+            src_app = stage
+        else:
+            for root, _dirs, files in os.walk(stage):
+                if "server.py" in files and os.path.basename(root) == "app":
+                    src_app = root
+                    break
+            if not src_app:
+                for root, _dirs, files in os.walk(stage):
+                    if "server.py" in files:
+                        src_app = root
+                        break
+        if not src_app:
+            raise RuntimeError("pacchetto non valido: server.py non trovato")
+        updater = os.path.join(tmp, "apply_update.py")
+        with open(updater, "w", encoding="utf-8") as f:
+            f.write(_UPDATER_SRC)
+        flags = 0
+        if os.name == "nt":
+            flags = 0x00000008 | 0x08000000   # DETACHED_PROCESS | CREATE_NO_WINDOW
+        subprocess.Popen([sys.executable, updater, src_app, APP_DIR, sys.executable,
+                          os.path.join(APP_DIR, "server.py"), str(APP_PORT)],
+                         creationflags=flags, close_fds=True)
+        _UPDATE.update({"phase": "restarting", "msg": "Applico e riavvio…"})
+        time.sleep(1.2)   # lascia partire l'updater e chiudere la risposta HTTP
+        stop_llama_slot(SLOT_MAIN)
+        stop_llama_slot(SLOT_AGENT)
+        stop_llama_slot(SLOT_EVAL)
+        os._exit(0)
+    except Exception as e:
+        _UPDATE.update({"phase": "error", "error": str(e), "msg": ""})
+
+
+def _startup_update_check():
+    """All'avvio: se auto_update e' attivo e c'e' una nuova versione (e nessun job in corso), aggiorna."""
+    time.sleep(4)
+    try:
+        chk = check_update()
+        if chk.get("update_available") and get_config().get("auto_update") and not _jobs_busy():
+            _do_update()
+    except Exception:
+        pass
+
+
 def agent_model():
     for fn in list_models():
         if AGENT_MODEL_PATTERN in fn.lower():
@@ -3880,7 +4085,12 @@ class Handler(BaseHTTPRequestHandler):
                                  "persona_presets": [{"key": k, "label": v["label"], "sel": v["sel"]}
                                                      for k, v in PERSONA_PRESETS.items()],
                                  "characters": load_characters(),
+                                 "app_version": APP_VERSION,
                                  "essentials_missing": essentials_missing()})
+            elif path == "/api/update/check":
+                self._send(200, check_update())
+            elif path == "/api/update/status":
+                self._send(200, dict(_UPDATE))
             elif path == "/api/status":
                 comfy = True
                 try:
@@ -4554,6 +4764,28 @@ class Handler(BaseHTTPRequestHandler):
                 except Exception:
                     pass
                 self._send(200, {"ok": True})
+            elif self.path == "/api/update/apply":
+                if _jobs_busy():
+                    self._send(409, {"error": "Ci sono lavori in corso: attendi che finiscano prima di aggiornare."})
+                    return
+                chk = check_update()
+                if not chk.get("update_available"):
+                    self._send(400, {"error": chk.get("error") or "Nessun aggiornamento disponibile."})
+                    return
+                _UPDATE.update({"phase": "starting", "msg": "", "error": ""})
+                threading.Thread(target=_do_update, daemon=True).start()
+                self._send(200, {"ok": True, "latest": chk.get("latest")})
+            elif self.path == "/api/update/config":
+                body = self._read_body()
+                cfg = get_config()
+                if "github_repo" in body:
+                    cfg["github_repo"] = str(body.get("github_repo") or "").strip().strip("/")
+                if "auto_update" in body:
+                    cfg["auto_update"] = bool(body.get("auto_update"))
+                with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+                    json.dump(cfg, f, indent=2, ensure_ascii=False)
+                self._send(200, {"ok": True, "github_repo": cfg.get("github_repo", ""),
+                                 "auto_update": bool(cfg.get("auto_update"))})
             elif self.path == "/api/shutdown":
                 self._send(200, {"ok": True})
                 threading.Thread(target=_shutdown_all, daemon=True).start()
@@ -4755,6 +4987,7 @@ if __name__ == "__main__":
     threading.Thread(target=worker_loop, daemon=True).start()
     threading.Thread(target=progress_monitor, daemon=True).start()
     threading.Thread(target=jobs_saver_loop, daemon=True).start()
+    threading.Thread(target=_startup_update_check, daemon=True).start()
     server = ThreadingHTTPServer(("127.0.0.1", APP_PORT), Handler)
     print(f"Prompt Studio: http://127.0.0.1:{APP_PORT}")
     server.serve_forever()

@@ -39,6 +39,16 @@ You write a *setting* for each tab; a local LLM writes and self-repairs the imag
 - **Start:** `Avvia_Prompt_Studio.bat` → opens <http://127.0.0.1:8500>
 - **Stop:** `Arresta_Prompt_Studio.bat`
 
+## Auto-update
+
+Prompt Studio can update itself from this GitHub repository's **Releases**.
+
+- Open the **Models** window → **Updates** section. Enter your repo as `owner/name` and press **Save**.
+- The app checks for a newer release on startup and when you open that window. If one is found, an **Update** badge appears in the header. Click **Update now** and the app downloads the release, backs up the current files, replaces the code (your settings, saved characters and job history are **preserved**), and restarts on its own — the page reloads when it is back.
+- Enable **Auto-update on startup** to apply new versions automatically at launch (skipped while jobs are running).
+
+**Releasing a new version (maintainers).** Bump `APP_VERSION` in [`app/server.py`](app/server.py), commit, then create a **GitHub Release** with a tag like `v1.1.0`. The app compares the running `APP_VERSION` with the latest release tag and offers the update. It uses the release's auto-generated source archive by default (no manual asset needed); optionally attach an `app.zip` asset (the app source at the archive root) to override it.
+
 ## Architecture
 
 | Path | What it is |

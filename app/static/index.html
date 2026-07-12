@@ -503,6 +503,9 @@
   <h1><span>Prompt Studio</span></h1>
   <span style="color:var(--muted);font-size:13px" data-i18n="hdrSub">schede &rsaquo; prompt LLM &rsaquo; foto</span>
   <button class="btn-small" style="margin-left:auto;font-weight:700" id="langtoggle" onclick="toggleLang()" data-i18n-title="langToggleT" title="Lingua / Language">EN</button>
+  <button class="btn-small" id="updbadge" onclick="toggleModels()" data-i18n-title="updBadgeT" title="" style="display:none;font-weight:700;background:var(--ok);color:#04351f;border-color:var(--ok)">
+    <svg class="ic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><polyline points="21 3 21 8 16 8"/></svg>
+    <span data-i18n="updBadge">Aggiorna</span></button>
   <button class="btn-small" id="btn-models" onclick="toggleModels()" data-i18n-title="btnModelsT" title="scarica o gestisci i modelli AI">
     <svg class="ic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.89 1.45l8 4A2 2 0 0 1 22 7.24v9.53a2 2 0 0 1-1.11 1.79l-8 4a2 2 0 0 1-1.79 0l-8-4a2 2 0 0 1-1.1-1.8V7.24a2 2 0 0 1 1.11-1.79l8-4a2 2 0 0 1 1.78 0z"/><polyline points="2.32 6.16 12 11 21.68 6.16"/><line x1="12" y1="22.76" x2="12" y2="11"/></svg>
     <span data-i18n="btnModels">Modelli</span></button>
@@ -796,6 +799,22 @@
 <div id="modeldlg">
   <div class="dlg" style="width:620px;max-width:94vw">
     <h4 style="margin:0" data-i18n="modelsTitle">Componenti e modelli AI</h4>
+    <div id="update-box" style="border:1px solid var(--border);border-radius:var(--r-m);padding:10px 12px;margin:2px 0;background:var(--panel2)">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <b data-i18n="updSection">Aggiornamenti</b>
+        <span class="hint"><span data-i18n="updVersion">Versione</span> <b id="upd-cur">–</b></span>
+        <span id="upd-latest" class="hint"></span>
+        <button class="btn-small" id="upd-check" onclick="updCheck(true)" data-i18n="updCheckBtn" style="margin-left:auto">Controlla aggiornamenti</button>
+        <button class="btn-go" id="upd-apply" onclick="updApply()" data-i18n="updNowBtn" style="display:none">Aggiorna adesso</button>
+      </div>
+      <div id="upd-status" class="hint" style="margin-top:6px"></div>
+      <div id="upd-notes" style="display:none;margin-top:6px;max-height:120px;overflow:auto;white-space:pre-wrap;font-size:12px;color:var(--muted);border-top:1px solid var(--border);padding-top:6px"></div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px">
+        <label class="checkline" style="margin:0"><input type="checkbox" id="upd-auto" onchange="updSaveCfg()"><span data-i18n="updAutoLabel">Aggiorna in automatico all'avvio</span></label>
+        <input id="upd-repo" data-i18n-ph="updRepoPh" placeholder="utente/prompt-studio" title="" style="flex:1;min-width:150px;max-width:240px" onkeydown="if(event.key==='Enter')updSaveCfg()">
+        <button class="btn-small" onclick="updSaveCfg()" data-i18n="save">Salva</button>
+      </div>
+    </div>
     <div id="starter-guide"></div>
     <div id="model-list" style="display:flex;flex-direction:column;gap:8px;max-height:56vh;overflow-y:auto"></div>
     <div class="hint" style="margin-top:2px" data-i18n="modelsHint">I file finiscono da soli nella cartella giusta. I download si
@@ -995,6 +1014,14 @@ const I18N = {
     badgePhoto: 'PHOTO', badgeVideo: 'VIDEO', nameWf: 'Give the workflow a name', delCharT: 'delete character',
     tpsStreaming: 'LLM: {0} token/s now', tpsLast: 'last: {0} token/s', inMemory: 'in memory: {0}',
     styleActiveHint: '{0} — click to deactivate',
+    updSection: 'Updates', updVersion: 'Version', updCheckBtn: 'Check for updates', updNowBtn: 'Update now',
+    updAutoLabel: 'Auto-update on startup', updRepoPh: 'user/prompt-studio', updRepoLabel: 'GitHub repository (user/repo)',
+    updLatest: 'latest: {0}', updUpToDate: 'You have the latest version ({0}).', updAvail: 'Update available: {0}',
+    updNotConfigured: 'Enter your GitHub repo below (user/repo) to enable updates.',
+    updChecking: 'Checking…', updConfirm: 'Download and install version {0}? The app will restart automatically.',
+    updWorking: 'Updating… the app restarts on its own; this page reloads when it is back.',
+    updBusy: 'Finish the running jobs before updating.', updErr: 'Update error: {0}',
+    updSaved: 'Update settings saved.', updBadge: 'Update', updBadgeT: 'A new version is available — click to open',
   },
   it: {
     htmlLang: 'it', locale: 'it-IT',
@@ -1156,6 +1183,14 @@ const I18N = {
     badgePhoto: 'FOTO', badgeVideo: 'VIDEO', nameWf: 'Dai un nome al workflow', delCharT: 'elimina personaggio',
     tpsStreaming: 'LLM: {0} token/s ora', tpsLast: 'ultimi: {0} token/s', inMemory: 'in memoria: {0}',
     styleActiveHint: '{0} — clicca per disattivare',
+    updSection: 'Aggiornamenti', updVersion: 'Versione', updCheckBtn: 'Controlla aggiornamenti', updNowBtn: 'Aggiorna adesso',
+    updAutoLabel: 'Aggiorna in automatico all’avvio', updRepoPh: 'utente/prompt-studio', updRepoLabel: 'Repository GitHub (utente/repo)',
+    updLatest: 'ultima: {0}', updUpToDate: 'Hai già l’ultima versione ({0}).', updAvail: 'Aggiornamento disponibile: {0}',
+    updNotConfigured: 'Inserisci qui sotto il tuo repo GitHub (utente/repo) per abilitare gli aggiornamenti.',
+    updChecking: 'Controllo…', updConfirm: 'Scaricare e installare la versione {0}? L’app si riavvierà da sola.',
+    updWorking: 'Aggiornamento in corso… l’app si riavvia da sola; la pagina si ricarica quando è di nuovo pronta.',
+    updBusy: 'Termina i lavori in corso prima di aggiornare.', updErr: 'Errore aggiornamento: {0}',
+    updSaved: 'Impostazioni aggiornamento salvate.', updBadge: 'Aggiorna', updBadgeT: 'È disponibile una nuova versione — clic per aprire',
   }
 };
 let LANG = (function(){ try{ return localStorage.getItem('ps_lang') || 'en'; }catch(e){ return 'en'; } })();
@@ -1723,6 +1758,7 @@ async function init(){
   refreshStatus(); setInterval(refreshStatus, 8000);
   refreshSysmon(); setInterval(refreshSysmon, 3000);
   refreshJobs();  setInterval(refreshJobs, 1500);
+  updCheck(false);   // controllo aggiornamenti silenzioso all'avvio (mostra il badge se disponibile)
   setInterval(animateProg, 55);   // percentuale fluida ~18 fps
   $('scorefilter-sel').onchange = () => {
     scoreFilter = parseInt($('scorefilter-sel').value) || 0;
@@ -2644,6 +2680,7 @@ function toggleModels(){
   clearInterval(modelsTimer);
   if(open){
     refreshModels();
+    updCheck(false);   // stato aggiornamenti fresco all'apertura
     modelsTimer = setInterval(refreshModels, 1000);
   }else{
     reloadImodels();   // aggiorna il menu' dopo eventuali download completati
@@ -2774,6 +2811,77 @@ function updateSetupBanner(){
 }
 function openModelsGuide(){
   if($('modeldlg').style.display !== 'flex') toggleModels();
+}
+
+// ---------------- auto-aggiornamento da GitHub ----------------
+let UPD = {current:'', latest:'', available:false, configured:false};
+function showUpdBadge(on){ const b = $('updbadge'); if(b) b.style.display = on ? '' : 'none'; }
+
+async function updCheck(manual){
+  const st = $('upd-status');
+  if(manual){ st.textContent = tr('updChecking'); st.style.color = ''; }
+  try{
+    const r = await api('/api/update/check');
+    UPD = {current:r.current||'', latest:r.latest||'', available:!!r.update_available, configured:!!r.configured};
+    if($('upd-cur')) $('upd-cur').textContent = r.current || '–';
+    if($('upd-repo') && document.activeElement !== $('upd-repo')) $('upd-repo').value = r.github_repo || '';
+    if($('upd-auto')) $('upd-auto').checked = !!r.auto_update;
+    if($('upd-latest')) $('upd-latest').textContent = r.latest ? tr('updLatest', r.latest) : '';
+    const notes = $('upd-notes'), apply = $('upd-apply');
+    if(r.update_available){
+      st.textContent = tr('updAvail', r.latest); st.style.color = 'var(--ok)';
+      if(apply) apply.style.display = '';
+      if(notes){ notes.textContent = r.notes || ''; notes.style.display = r.notes ? '' : 'none'; }
+      showUpdBadge(true);
+    }else{
+      if(apply) apply.style.display = 'none';
+      if(notes) notes.style.display = 'none';
+      st.style.color = '';
+      if(!r.configured) st.textContent = tr('updNotConfigured');
+      else if(r.error) st.textContent = tr('updErr', r.error);
+      else if(manual || r.latest) st.textContent = tr('updUpToDate', r.current);
+      else st.textContent = '';
+      showUpdBadge(false);
+    }
+  }catch(e){ st.textContent = tr('updErr', e.message); }
+}
+
+async function updApply(){
+  if(!confirm(tr('updConfirm', UPD.latest || ''))) return;
+  const st = $('upd-status');
+  try{
+    await api('/api/update/apply', {});
+    st.textContent = tr('updWorking'); st.style.color = 'var(--warn)';
+    if($('upd-apply')) $('upd-apply').disabled = true;
+    if($('upd-check')) $('upd-check').disabled = true;
+    updWaitRestart();
+  }catch(e){
+    const m = String(e.message || '');
+    if(/lavori in corso|jobs/i.test(m)) showErr(tr('updBusy'));
+    else showErr(tr('updErr', m));
+  }
+}
+
+// attende che il server vada giù e RITORNI su, poi ricarica la pagina (nuova versione)
+function updWaitRestart(){
+  let wentDown = false, tries = 0;
+  const iv = setInterval(async () => {
+    tries++;
+    let up = false;
+    try{ const r = await fetch('/api/update/status', {cache:'no-store'}); up = r.ok; }catch(_){ up = false; }
+    if(!up) wentDown = true;
+    else if(wentDown){ clearInterval(iv); setTimeout(() => location.reload(), 1000); }
+    if(tries > 150) clearInterval(iv);   // ~5 min di sicurezza
+  }, 2000);
+}
+
+async function updSaveCfg(){
+  try{
+    await api('/api/update/config', {github_repo: ($('upd-repo').value || '').trim(),
+                                     auto_update: $('upd-auto').checked});
+    showOk(tr('updSaved'));
+    updCheck(false);
+  }catch(e){ showErr(tr('errPrefix') + e.message); }
 }
 
 // ---------------- agente workflow ----------------
