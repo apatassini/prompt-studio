@@ -32,7 +32,7 @@ COMFY_URL = "http://127.0.0.1:8188"
 
 # Versione dell'app: confrontata col tag dell'ultima Release su GitHub per l'auto-aggiornamento.
 # Per pubblicare una nuova versione: alza APP_VERSION, committa, crea una Release con tag "vX.Y.Z".
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.0.1"
 # Repository GitHub da cui scaricare gli aggiornamenti ("utente/repo"). Override in config.json
 # ("github_repo") o dalla finestra "Modelli" nell'interfaccia. Vuoto = auto-aggiornamento disattivato.
 GITHUB_REPO_DEFAULT = "apatassini/prompt-studio"
