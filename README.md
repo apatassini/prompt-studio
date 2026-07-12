@@ -4,6 +4,8 @@ A local web app that turns plain-language descriptions into **coherent photo set
 
 You write a *setting* for each tab; a local LLM writes and self-repairs the image prompts in English; ComfyUI renders the photos (or animates them into video); an optional local vision model scores the results so you can filter the good ones. The UI is **bilingual (English / Italian)** with a toggle in the header.
 
+> **Made by [Persoft](https://persoft.it)** — custom software & AI solutions. Contact: [info@persoft.it](mailto:info@persoft.it) · <https://persoft.it>
+
 > ⚠️ **Adult content.** Prompt Studio can be used to generate explicit imagery. Use it responsibly and legally. You are solely responsible for what you generate and for complying with the license of every model you download (see *Third-party components* below). Do not use it to create illegal content or non-consensual imagery of real people.
 
 ---
@@ -69,6 +71,15 @@ Prompt Studio **orchestrates** third-party software and **downloads** third-part
 - **ComfyUI** — GPL-3.0. Prompt Studio talks to it only over its network API (separate process), so it is not a derivative work of ComfyUI.
 - **llama.cpp** — MIT.
 - **AI models** (e.g. FLUX.2 Klein, Z-Image, Chroma, LTX-2.3, Qwen, Mistral-Nemo) — each has **its own license**, and **some are non-commercial or otherwise restricted**. Read and respect the license of every model before use, especially for any commercial purpose.
+
+## Author
+
+Designed and developed by **[Persoft](https://persoft.it)** — custom software and AI solutions.
+
+- 🌐 Website: <https://persoft.it>
+- ✉️ Contact: [info@persoft.it](mailto:info@persoft.it)
+
+If Prompt Studio is useful to you, a ⭐ on the repository is appreciated. For custom development, integrations or consulting, get in touch.
 
 ## License
 

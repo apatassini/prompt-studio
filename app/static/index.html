@@ -776,6 +776,17 @@
 </div>
 </div>
 
+<footer id="appfooter" style="flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:8px;height:26px;font-size:12px;color:var(--faint);border-top:1px solid var(--border);background:rgba(13,16,21,.6)">
+  <span data-i18n="footPoweredBy">Realizzato da</span>
+  <a href="https://persoft.it" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600;text-decoration:none">Persoft</a>
+  <span style="opacity:.5">·</span>
+  <a href="https://persoft.it" target="_blank" rel="noopener" style="color:var(--muted);text-decoration:none">persoft.it</a>
+  <span style="opacity:.5">·</span>
+  <a href="mailto:info@persoft.it" style="color:var(--muted);text-decoration:none">info@persoft.it</a>
+  <span style="opacity:.5">·</span>
+  <span class="hint">Prompt Studio <b id="foot-ver">v1.0.0</b></span>
+</footer>
+
 <div id="lightbox">
   <div class="lb-stage">
     <button class="lb-nav" id="lb-prev" data-i18n-title="lbPrevT" title="foto precedente (freccia sinistra)"></button>
@@ -1022,6 +1033,7 @@ const I18N = {
     updWorking: 'Updating… the app restarts on its own; this page reloads when it is back.',
     updBusy: 'Finish the running jobs before updating.', updErr: 'Update error: {0}',
     updSaved: 'Update settings saved.', updBadge: 'Update', updBadgeT: 'A new version is available — click to open',
+    footPoweredBy: 'Powered by',
   },
   it: {
     htmlLang: 'it', locale: 'it-IT',
@@ -1191,6 +1203,7 @@ const I18N = {
     updWorking: 'Aggiornamento in corso… l’app si riavvia da sola; la pagina si ricarica quando è di nuovo pronta.',
     updBusy: 'Termina i lavori in corso prima di aggiornare.', updErr: 'Errore aggiornamento: {0}',
     updSaved: 'Impostazioni aggiornamento salvate.', updBadge: 'Aggiorna', updBadgeT: 'È disponibile una nuova versione — clic per aprire',
+    footPoweredBy: 'Realizzato da',
   }
 };
 let LANG = (function(){ try{ return localStorage.getItem('ps_lang') || 'en'; }catch(e){ return 'en'; } })();
@@ -2824,6 +2837,7 @@ async function updCheck(manual){
     const r = await api('/api/update/check');
     UPD = {current:r.current||'', latest:r.latest||'', available:!!r.update_available, configured:!!r.configured};
     if($('upd-cur')) $('upd-cur').textContent = r.current || '–';
+    if($('foot-ver') && r.current) $('foot-ver').textContent = 'v' + r.current;
     if($('upd-repo') && document.activeElement !== $('upd-repo')) $('upd-repo').value = r.github_repo || '';
     if($('upd-auto')) $('upd-auto').checked = !!r.auto_update;
     if($('upd-latest')) $('upd-latest').textContent = r.latest ? tr('updLatest', r.latest) : '';
