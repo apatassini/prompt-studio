@@ -1,0 +1,56 @@
+PROMPT STUDIO - Installazione
+=============================
+
+COSA SERVE
+- Windows 10/11 a 64 bit
+- Scheda video NVIDIA con almeno 12 GB di VRAM (consigliati 16)
+  e driver NVIDIA recente (2025 o piu' nuovo)
+- RAM: 16 GB minimo; 40+ GB per usare l'agente Qwen3.6
+- Spazio disco: ~25 GB per l'installazione + 9-22 GB per ogni modello AI
+
+CONTENUTO (tutto qui: ~11 MB)
+- Installa_Prompt_Studio.bat : installazione e avvio
+- bootstrap.zip              : interfaccia web + mini-python: parte subito!
+- app.zip                    : interfaccia web (aggiornabile da sola)
+- Aggiorna_App.bat           : (solo per lo sviluppatore) rigenera app.zip
+
+Il runtime (ComfyUI+PyTorch ~2 GB, da GitHub ufficiale, ripulito dei template
+demo dopo l'installazione) e i modelli AI si scaricano dall'interfaccia
+(pulsante "Modelli") con progresso e velocita' visibili.
+
+INSTALLAZIONE
+1. Copia questa cartella dove vuoi (es. E:\PromptStudio_Setup)
+2. Doppio click su "Installa_Prompt_Studio.bat"
+   - la prima volta estrae i file (alcuni minuti) e crea le icone sul desktop
+   - poi avvia tutto e apre il browser su http://127.0.0.1:8500
+3. Al primo avvio si apre DA SOLA la finestra dei componenti con una guida:
+   premi "Scarica tutto il necessario per iniziare" e l'app scarica da sola,
+   in ordine, le 4 cose che servono (motore immagini, motore testo, un modello
+   che disegna e il modello che scrive i prompt). Vedi progresso e velocita';
+   i download interrotti riprendono da dove erano. Puoi anche scegliere a mano.
+   NOTA: dopo aver scaricato il "motore immagini" riavvia dall'icona/dal .bat.
+
+USO QUOTIDIANO
+Dopo l'installazione, dentro questa cartella compare la sottocartella
+"ComfyUI_windows_portable". LI' DENTRO ci sono i due programmi che ti servono
+ogni giorno:
+- Avvia_Prompt_Studio.bat  -> AVVIA il programma e apre il browser
+- Arresta_Prompt_Studio.bat -> SPEGNE tutto
+
+Comodita': l'installer crea anche tre icone sul desktop, con icone riconoscibili:
+- "Prompt Studio"            (AVVIA)  = cerchio VERDE con triangolo PLAY
+- "Arresta Prompt Studio"    (SPEGNE) = cerchio ROSSO con quadrato STOP
+- "Prompt Studio (browser)"  (apre solo la pagina, se il programma e' gia' acceso)
+
+SE LE ICONE NON COMPAIONO SUL DESKTOP
+Non e' un problema: usa direttamente i due .bat che trovi dentro la cartella
+"ComfyUI_windows_portable" (vedi sopra). Fanno esattamente la stessa cosa.
+Puoi anche trascinarli sul desktop col tasto destro -> "Crea collegamento".
+(Il desktop a volte e' spostato dal sistema su OneDrive o su un altro disco:
+in quel caso le icone finiscono la', non nel desktop classico.)
+
+NOTE
+- Tutto gira in locale: nessun dato esce dal PC (tranne il download dei modelli
+  da HuggingFace).
+- La cartella e' portabile: puoi spostarla o copiarla su un altro PC
+  (modelli inclusi, se gia' scaricati).

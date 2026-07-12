@@ -1,0 +1,57 @@
+# ==========================================================================
+#  Prompt Studio — .gitignore
+#  Publish ONLY the app source. Never commit personal data, user content,
+#  downloaded models, the ComfyUI runtime, or build artifacts.
+# ==========================================================================
+
+# --- Personal / user data (NEVER publish) ---
+app/characters.json
+app/presets.json
+app/jobs_state.json
+**/characters.json
+**/presets.json
+**/jobs_state.json
+**/GUIDA_*.md
+**/ale.json
+
+# --- User-generated media & inputs ---
+output/
+input/
+**/output/
+**/input/
+
+# --- Models, weights, LoRAs, engines (downloaded by the installer) ---
+models/
+**/models/
+*.safetensors
+*.gguf
+*.ckpt
+*.pth
+*.bin
+*.onnx
+
+# --- Binary distribution artifacts (built, not source; ship via Releases) ---
+*.zip
+*.7z
+bootstrap.zip
+app.zip
+*.exe
+*.dll
+
+# --- ComfyUI runtime / Python embed ---
+ComfyUI/
+python_embeded/
+minipython/
+llamacpp/
+
+# --- Python caches ---
+__pycache__/
+*.py[cod]
+*.pyc
+
+# --- Logs & temp ---
+*.log
+*.part
+*.tmp
+.DS_Store
+Thumbs.db

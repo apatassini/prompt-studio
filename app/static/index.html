@@ -1,0 +1,3269 @@
+﻿<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prompt Studio</title>
+<style>
+  :root{
+    --bg:#0a0c10; --panel:#12151b; --panel2:#181c24; --panel3:#1f242e;
+    --border:rgba(255,255,255,.07); --border-hi:rgba(255,255,255,.14);
+    --text:#edeff4; --muted:#9aa1ae; --faint:#6c7380;
+    --accent:#6e87ff; --accent2:#9a6bff;
+    --accent-soft:rgba(110,135,255,.13); --accent-line:rgba(110,135,255,.45);
+    --ok:#34d399; --warn:#fbbf24; --err:#f87171;
+    --leftw:420px; --apw:540px;
+    --r-s:7px; --r-m:10px; --r-l:14px;
+    --shadow-pop:0 8px 24px -8px rgba(0,0,0,.55),0 2px 8px -2px rgba(0,0,0,.4);
+    --ring:0 0 0 3px rgba(110,135,255,.25);
+    --ease:cubic-bezier(.2,.7,.3,1);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font:15px/1.5 "Segoe UI Variable Text","Segoe UI",Inter,system-ui,sans-serif;
+    background:linear-gradient(180deg,#0d1015 0%,var(--bg) 260px);
+    color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden;
+    -webkit-font-smoothing:antialiased}
+  ::selection{background:rgba(110,135,255,.32)}
+  *{scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.14) transparent}
+  ::-webkit-scrollbar{width:8px;height:8px}
+  ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.13);border-radius:8px;border:2px solid transparent;background-clip:content-box}
+  ::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.24);border:2px solid transparent;background-clip:content-box}
+  ::-webkit-scrollbar-track{background:transparent}
+  :focus-visible{outline:2px solid var(--accent-line);outline-offset:2px;border-radius:4px}
+  header{padding:0 18px;height:52px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-shrink:0;
+    background:rgba(13,16,21,.85);backdrop-filter:blur(12px)}
+  header>svg{background:linear-gradient(135deg,var(--accent),var(--accent2));
+    border-radius:8px;padding:5px;width:28px;height:28px;stroke:#fff !important;flex-shrink:0}
+  header h1{font-size:15px;margin:0;font-weight:650;letter-spacing:.1px}
+  header h1 span{color:var(--text)}
+  .status{display:flex;gap:14px;font-size:12.5px;color:var(--muted)}
+  /* colonna centrale: job sopra, statistiche sotto (richiudibile) */
+  #rightcol{display:flex;flex-direction:column;min-height:0;min-width:0;gap:8px}
+  #statsbar{flex-shrink:0;border:1px solid var(--border);border-radius:var(--r-l);
+    background:var(--panel);display:flex;align-items:center;gap:14px;padding:9px 16px;margin-right:4px}
+  #statsbar.collapsed{padding:4px 16px}
+  #statsbar.collapsed .sb-body{display:none}
+  .sb-body{display:flex;align-items:center;gap:28px;flex:1;min-width:0}
+  #sb-toggle{padding:4px 9px}
+  .meter{flex:1;max-width:280px;min-width:120px}
+  .mlabel{display:flex;justify-content:space-between;font-size:11px;color:var(--faint);
+    text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin-bottom:5px}
+  .mlabel b{color:var(--text);font-weight:600;font-size:12.5px;font-variant-numeric:tabular-nums}
+  .mbar{height:6px;background:rgba(255,255,255,.06);border-radius:999px;overflow:hidden}
+  .mbar>div{height:100%;width:0%;border-radius:999px;background:var(--accent);
+    transition:width .5s var(--ease),background .5s}
+  .mbar>div.warn{background:var(--warn)}
+  .mbar>div.crit{background:var(--err)}
+  .sb-info{display:flex;flex-direction:column;gap:2px;font-size:12.5px;color:var(--muted);
+    white-space:nowrap;text-align:right;margin-left:auto;font-variant-numeric:tabular-nums}
+  .sb-info span:first-child{color:var(--text);font-weight:600}
+  @media(max-width:1000px){.sb-body{gap:12px}.meter{min-width:80px}}
+  .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;background:var(--err)}
+  .dot.on{background:var(--ok);box-shadow:0 0 0 3px rgba(52,211,153,.15)}
+  main{display:grid;grid-template-columns:var(--leftw) 8px 1fr;gap:6px;padding:12px 16px;
+    flex:1;min-height:0;min-width:0}
+  @media(max-width:1000px){main{grid-template-columns:1fr;overflow-y:auto}#splitter{display:none}}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r-l);padding:16px;
+    overflow-y:auto;min-height:0}
+  #splitter{cursor:col-resize;border-radius:4px;align-self:stretch;transition:background .15s}
+  #splitter:hover,#splitter.drag{background:var(--accent-line)}
+  #jobs{overflow-y:auto;min-height:0;padding-right:4px;flex:1}
+  label{display:block;font-size:11px;color:var(--faint);margin:12px 0 5px;text-transform:uppercase;
+    letter-spacing:.06em;font-weight:600}
+  textarea,input,select{width:100%;background:var(--panel2);border:1px solid var(--border);border-radius:var(--r-m);
+    color:var(--text);padding:8px 11px;font:inherit;font-size:14px;outline:none;
+    transition:border-color .14s var(--ease),box-shadow .14s var(--ease),background .14s}
+  textarea:hover,input:hover,select:hover{border-color:var(--border-hi)}
+  textarea:focus,input:focus,select:focus{border-color:var(--accent);box-shadow:var(--ring)}
+  textarea{resize:vertical;min-height:120px;line-height:1.55}
+  select{appearance:none;-webkit-appearance:none;padding-right:30px;cursor:pointer;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239aa1ae' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 10px center}
+  input[type=checkbox]{accent-color:var(--accent);width:15px;height:15px;cursor:pointer}
+  input[type=number]{font-variant-numeric:tabular-nums}
+  /* chip stile fotografico: attivi sopra, etichette gruppi affiancate, un pannello alla volta */
+  .stylechips{display:flex;flex-direction:column;gap:6px;margin-top:2px}
+  .activerow{display:flex;flex-wrap:wrap;gap:5px;padding:8px 9px;border:1px dashed var(--accent-line);
+    border-radius:var(--r-m);background:var(--accent-soft)}
+  .activerow .chip .ic{margin-left:4px;vertical-align:-1px;opacity:.8}
+  .gbar{display:flex;flex-wrap:wrap;gap:5px}
+  .gbtn{display:inline-flex;align-items:center;font-size:11.5px;font-weight:500;padding:3px 11px;
+    border:1px solid var(--border);border-radius:999px;cursor:pointer;color:var(--muted);
+    background:var(--panel2);user-select:none;
+    transition:border-color .14s var(--ease),background .14s,color .14s}
+  .gbtn:hover{border-color:var(--border-hi);color:var(--text)}
+  .gbtn.open{color:var(--text);border-color:var(--accent-line);background:var(--accent-soft)}
+  .gbtn b{background:var(--accent);color:#fff;border-radius:999px;padding:0 6px;margin-left:6px;
+    font-size:10px;line-height:15px;font-variant-numeric:tabular-nums}
+  .gpanel{display:flex;flex-wrap:wrap;gap:5px;padding:9px 10px;border:1px solid var(--border);
+    border-radius:var(--r-m);background:var(--panel2)}
+  .gpanel .chip{background:var(--panel)}
+  .chip{font-size:11.5px;font-weight:500;padding:2px 10px;border:1px solid var(--border);border-radius:999px;
+    cursor:pointer;color:var(--muted);background:var(--panel2);user-select:none;line-height:1.7;
+    transition:border-color .14s var(--ease),background .14s,color .14s}
+  .chip:hover{border-color:var(--border-hi);color:var(--text)}
+  .chip.on{border-color:var(--accent-line);color:#cdd6ff;background:var(--accent-soft)}
+  .modelbadge{display:inline-block;background:var(--accent-soft);border:1px solid var(--accent-line);
+    color:#c3cdff;border-radius:999px;padding:1px 10px;font-size:12px;font-weight:600}
+  .row{display:flex;gap:10px;align-items:flex-end}
+  .row>div{flex:1}
+  .row>div>label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  /* slot richiudibili per le immagini campione dei workflow */
+  .refslot{border:1px solid var(--border);border-radius:var(--r-m);background:var(--panel2);margin-top:6px;overflow:hidden}
+  .rs-head{display:flex;align-items:center;gap:8px;padding:8px 11px;cursor:pointer;font-size:13px;
+    font-weight:500;color:var(--text);user-select:none;transition:background .14s}
+  .rs-head:hover{background:var(--panel3)}
+  .rs-state{margin-left:auto;font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+  .rs-state.ok{color:var(--ok)}
+  .rs-state.miss{color:var(--warn)}
+  .rs-body{display:flex;align-items:center;gap:10px;padding:0 11px 11px}
+  .rs-drop{flex:1;border:1.5px dashed var(--border-hi);border-radius:var(--r-s);padding:18px 12px;
+    text-align:center;color:var(--muted);font-size:13px;cursor:pointer;
+    transition:border-color .14s,background .14s,color .14s}
+  .rs-drop:hover,.rs-drop.over{border-color:var(--accent-line);color:var(--text);background:var(--accent-soft)}
+  /* slot ref evidenziato mentre ci trascini sopra una foto della galleria */
+  .rs-body.rs-over{outline:2px dashed var(--accent);outline-offset:-3px;border-radius:var(--r-s);background:var(--accent-soft)}
+  .thumb[draggable=true]{cursor:grab}
+  .thumb[draggable=true]:active{cursor:grabbing}
+  .rs-thumb{width:64px;height:64px;object-fit:cover;border-radius:var(--r-s);border:1px solid var(--border);flex-shrink:0}
+  .rs-file{flex:1;min-width:0;font-size:12.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  /* riga opzioni video (durata/fps) mostrata quando il workflow selezionato è un video */
+  .vinfo{font-size:12px;color:var(--muted);background:var(--panel2);border:1px solid var(--border);
+    border-radius:999px;padding:5px 12px;display:inline-block;white-space:nowrap;font-variant-numeric:tabular-nums}
+  button{cursor:pointer;border:1px solid transparent;border-radius:var(--r-m);padding:9px 14px;
+    font:inherit;font-size:14px;font-weight:600;
+    display:inline-flex;align-items:center;justify-content:center;gap:7px;
+    transition:transform .1s,border-color .14s var(--ease),background .14s,color .14s,opacity .14s,box-shadow .14s}
+  button:active{transform:translateY(1px)}
+  .btn-primary{width:100%;margin-top:16px;padding:12px 15px;font-size:14.5px;font-weight:650;
+    letter-spacing:.2px;color:#fff;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    box-shadow:0 4px 16px -6px rgba(110,135,255,.5),inset 0 1px 0 rgba(255,255,255,.15)}
+  .btn-primary:hover:not(:disabled){filter:brightness(1.08);
+    box-shadow:0 6px 20px -6px rgba(140,110,255,.55),inset 0 1px 0 rgba(255,255,255,.18)}
+  .btn-primary:disabled{opacity:.45;cursor:default}
+  .btn-go{background:var(--ok);color:#052e1f}
+  .btn-go:hover{filter:brightness(1.06)}
+  .btn-small{background:var(--panel2);color:var(--muted);border-color:var(--border);
+    padding:5px 11px;font-size:13px;font-weight:500;gap:6px}
+  .btn-small:hover{color:var(--text);border-color:var(--border-hi);background:var(--panel3)}
+  .ic{flex-shrink:0}
+  h3 .ic,.hint .ic{vertical-align:-2px}
+  /* tab bar */
+  /* modalita' VIDEO: il pannello vira al verde — i token accent cambiano in cascata
+     (chip, tab attive, focus, bottone Crea) e lo sfondo prende una tinta verdina */
+  #form-card.mode-video{
+    --accent:#2fbf8f; --accent2:#0d9e8a;
+    --accent-soft:rgba(47,191,143,.12); --accent-line:rgba(47,191,143,.45);
+    --ring:0 0 0 3px rgba(47,191,143,.25);
+    background:linear-gradient(180deg,rgba(47,191,143,.07),rgba(47,191,143,.02) 300px,transparent 480px) var(--panel);
+    border-color:rgba(47,191,143,.28)}
+  #form-card.mode-video .btn-primary{
+    box-shadow:0 4px 16px -6px rgba(47,191,143,.5),inset 0 1px 0 rgba(255,255,255,.15)}
+  /* selettore modalita' FOTO/VIDEO (+ sotto-modalita' video) */
+  .modetab{display:flex;gap:3px;background:var(--panel2);border:1px solid var(--border);
+    border-radius:var(--r-m);padding:3px;margin:8px 0 2px}
+  .modetab button{flex:1;background:none;border:none;border-radius:var(--r-s);padding:7px 10px;
+    font-size:13px;font-weight:600;color:var(--muted);gap:7px;
+    transition:background .14s,color .14s}
+  .modetab button:hover{color:var(--text)}
+  .modetab button.on{background:var(--panel);color:var(--text);
+    box-shadow:0 1px 3px rgba(0,0,0,.35),inset 0 0 0 1px var(--border-hi)}
+  .modetab.sub{margin-top:6px;background:transparent;border:none;padding:0;gap:6px}
+  .modetab.sub button{flex:0 0 auto;background:var(--panel2);border:1px solid var(--border);
+    font-size:12px;font-weight:500;padding:5px 13px;border-radius:999px}
+  .modetab.sub button.on{background:var(--accent-soft);border-color:var(--accent-line);
+    color:#cdd6ff;box-shadow:none}
+  .tabbar{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+  .tabbtn{display:flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--border);
+    color:var(--muted);border-radius:var(--r-m);padding:6px 11px;font-size:13px;font-weight:500;
+    cursor:pointer;max-width:170px;
+    transition:border-color .14s var(--ease),background .14s,color .14s}
+  .tabbtn:hover{border-color:var(--border-hi);color:var(--text)}
+  .tabbtn.active{border-color:var(--accent-line);color:var(--text);background:var(--accent-soft)}
+  .tabbtn .tname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tabbtn .x{color:var(--faint);display:flex;align-items:center;padding:0 2px;transition:color .14s}
+  .tabbtn .x:hover{color:var(--err)}
+  .tabbtn.add{border-style:dashed;color:var(--muted);gap:5px}
+  .tabbtn.add:hover{color:var(--text);border-color:var(--accent-line)}
+  .arrow{display:flex;align-items:center}
+  #toast{display:none;align-items:center;gap:8px}
+  .lora-item{display:flex;align-items:center;gap:9px;background:var(--panel2);border:1px solid var(--border);
+    border-radius:var(--r-m);padding:7px 11px;margin-top:6px;font-size:13px}
+  .lora-item input[type=checkbox]{width:15px}
+  .lora-item input[type=number]{width:70px;padding:4px 6px}
+  .lora-item .name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .checkline{display:flex;align-items:center;gap:9px;margin-top:14px;font-size:13px;color:var(--muted);
+    text-transform:none;letter-spacing:0;font-weight:400;cursor:pointer;transition:color .14s}
+  .checkline:hover{color:var(--text)}
+  .checkline input{width:15px;flex-shrink:0}
+  .checkline .ic{flex-shrink:0;color:var(--faint)}
+  /* 4 checkbox su due colonne per risparmiare spazio verticale */
+  .checkgrid{display:grid;grid-template-columns:1fr 1fr;gap:4px 18px;margin-top:6px}
+  .checkgrid .checkline{margin-top:6px;cursor:pointer}
+  @media(max-width:520px){.checkgrid{grid-template-columns:1fr}}
+  /* job monitor */
+  .job{border:1px solid var(--border);border-radius:var(--r-l);background:var(--panel);margin-bottom:10px;
+    overflow:hidden;transition:border-color .18s var(--ease)}
+  .job:hover{border-color:var(--border-hi)}
+  /* comparsa morbida di un nuovo job appena creato */
+  .job-enter{animation:jobEnter .5s cubic-bezier(.22,.61,.36,1)}
+  @keyframes jobEnter{from{opacity:0;transform:translateY(-10px) scale(.98)}to{opacity:1;transform:none}}
+  /* i job in creazione respirano leggermente sul bordo (segnale di attività, non uno scatto) */
+  .job.running{border-color:var(--accent-line)}
+  .job.running .job-head .phase.ph-generating{animation:phaseBreath 2.6s ease-in-out infinite}
+  @keyframes phaseBreath{0%,100%{opacity:1}50%{opacity:.72}}
+  /* flusso di "nebbia energica" dal pulsante Genera verso la colonna dei job */
+  .mist{position:fixed;left:0;top:0;z-index:200;pointer-events:none;border-radius:50%;
+    background:radial-gradient(circle,rgba(190,214,255,.95),rgba(124,91,255,.35) 45%,rgba(91,140,255,0) 72%);
+    filter:blur(3px);will-change:transform,opacity}
+  /* la colonna job "accoglie" il flusso con un lampo azzurro quando arriva la nebbia */
+  @keyframes jobsFlash{0%{box-shadow:0 0 0 0 rgba(91,140,255,0)}
+    35%{box-shadow:inset 0 0 60px 0 rgba(91,140,255,.28)}100%{box-shadow:0 0 0 0 rgba(91,140,255,0)}}
+  .jobs-inflow{animation:jobsFlash 1s ease-out}
+  .job-head{padding:10px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;cursor:pointer;
+    user-select:none;transition:background .14s}
+  .job-head:hover{background:var(--panel2)}
+  .arrow{font-size:12px;color:var(--faint);width:14px}
+  .job.closed .jbody{display:none}
+  .pendchip{display:inline-flex;align-items:center;background:var(--panel2);border:1px dashed var(--border-hi);
+    border-radius:var(--r-m);padding:6px 12px;font-size:12.5px;color:var(--muted)}
+  .phase{font-size:11px;padding:3px 10px;border-radius:999px;font-weight:600;letter-spacing:.03em;
+    display:inline-flex;align-items:center;gap:6px}
+  .phase::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.85}
+  .ph-queued{background:rgba(255,255,255,.07);color:#c5cad4}
+  .ph-llm_loading,.ph-prompting{background:rgba(154,107,255,.14);color:#c9b2ff}
+  .ph-prompts_ready{background:rgba(251,191,36,.13);color:#fcd77e}
+  .ph-scheduled{background:rgba(45,212,191,.12);color:#7ee4d4}
+  .ph-generating{background:var(--accent-soft);color:#a9bcff}
+  .ph-done{background:rgba(52,211,153,.12);color:#7fe5bd}
+  .ph-error,.ph-cancelled{background:rgba(248,113,113,.13);color:#fda4a4}
+  .job-title{font-weight:600;font-size:14px}
+  .job-sub{color:var(--muted);font-size:13px;width:100%}
+  .progress{height:5px;background:var(--panel2)}
+  .progress>div{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .5s var(--ease)}
+  .job.running .progress>div{animation:hudflow 3s linear infinite;
+    background:linear-gradient(90deg,var(--accent),var(--accent2),var(--accent));background-size:200% 100%}
+  .tabsec{border-top:1px solid var(--border);padding:12px 16px}
+  .tabsec h3{margin:0 0 8px;font-size:13.5px;font-weight:600}
+  .tabsec h3 small{color:var(--faint);font-weight:400}
+  /* riepilogo della configurazione con cui è stato lanciato il job */
+  .cfgchips{display:flex;flex-wrap:wrap;gap:5px;margin:-2px 0 10px}
+  .cfgchip{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--muted);
+    background:var(--panel2);border:1px solid var(--border);border-radius:999px;padding:2px 9px;
+    font-variant-numeric:tabular-nums;white-space:nowrap}
+  .cfgchip b{color:var(--text);font-weight:600}
+  .cfgchip.k{border-color:var(--accent-line);background:var(--accent-soft)}
+  .cfgchip .ic{color:var(--faint);flex-shrink:0}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-top:8px}
+  .thumb{position:relative;border:1px solid var(--border);border-radius:var(--r-m);overflow:hidden;
+    background:var(--panel2);aspect-ratio:1;display:flex;align-items:center;justify-content:center;
+    color:var(--muted);font-size:12px;cursor:pointer;
+    transition:transform .16s var(--ease),box-shadow .16s,border-color .16s}
+  .thumb:not(.gen):hover{transform:translateY(-2px);border-color:var(--border-hi);
+    box-shadow:0 10px 24px -10px rgba(0,0,0,.6)}
+  .thumb img,.thumb video{width:100%;height:100%;object-fit:cover;display:block}
+  .thumb .vbadge,.thumb .tbadge{position:absolute;display:inline-flex;align-items:center;gap:4px;
+    background:rgba(8,10,14,.72);backdrop-filter:blur(6px);color:#e6e9f0;border:1px solid rgba(255,255,255,.08);
+    border-radius:999px;padding:2px 8px;font-size:10.5px;font-weight:500;line-height:1.5;
+    pointer-events:none;font-variant-numeric:tabular-nums}
+  .thumb .vbadge{top:6px;left:6px}
+  .thumb .tbadge{bottom:6px;right:6px}
+  .thumb .st{position:absolute;bottom:0;left:0;right:0;font-size:11.5px;padding:3px 7px;
+    background:linear-gradient(transparent,rgba(0,0,0,.72) 30%);color:#fff}
+  .stbar{height:4px;background:rgba(255,255,255,.18);border-radius:2px;margin-top:3px;overflow:hidden}
+  .stbar>div{height:100%;background:var(--accent);border-radius:2px;transition:width .5s}
+  .thumb .del{position:absolute;top:5px;right:5px;background:rgba(0,0,0,.6);color:#ffb3b3;border-radius:6px;
+    padding:2px 7px;font-size:13px;display:none}
+  .thumb:hover .del{display:block}
+  .thumb .del:hover{background:var(--err);color:#fff}
+  .spin{width:22px;height:22px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;
+    animation:sp 1s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  /* ============ fase di creazione: cella "ologramma" futuristica ============ */
+  .thumb.gen{background:radial-gradient(circle at 50% 42%,#12203f,#05070e 72%);
+    border-color:rgba(91,140,255,.55);
+    box-shadow:inset 0 0 46px rgba(91,140,255,.16),0 0 16px rgba(91,140,255,.14);
+    animation:cellIn .5s var(--ease)}
+  @keyframes cellIn{from{opacity:0;transform:scale(.955)}to{opacity:1;transform:none}}
+  .gen .bg,.gen .reveal,.parts>i{will-change:transform}
+  .thumb.gen::before{content:"";position:absolute;inset:0;z-index:1;
+    background:linear-gradient(rgba(91,140,255,.10) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(91,140,255,.10) 1px,transparent 1px);
+    background-size:15px 15px;animation:gridpan 5s linear infinite;opacity:.3}
+  @keyframes gridpan{to{background-position:0 15px,15px 0}}
+  /* sfondo "simil-immagine": la mini-anteprima generata, sfocata -> mai nitida ma VISIBILE */
+  .gen .bg{position:absolute;inset:-14%;z-index:0;background-size:cover;background-position:center;
+    filter:blur(15px) saturate(1.5) brightness(1.05);opacity:.95;transform:scale(1.1);
+    animation:bgdrift 10s ease-in-out infinite}
+  @keyframes bgdrift{0%,100%{transform:scale(1.1) translate(0,0)}50%{transform:scale(1.22) translate(2%,-3%)}}
+  /* copia piu' nitida "rivelata a flusso punteggiante": una banda di puntini scorre dall'alto in basso
+     e mostra a colpi pezzi dell'immagine mentre si materializza. */
+  .gen .reveal{position:absolute;inset:-14%;z-index:1;background-size:cover;background-position:center;
+    filter:blur(2px) saturate(1.9) brightness(1.42) contrast(1.12);transform:scale(1.1);pointer-events:none;
+    -webkit-mask-image:radial-gradient(circle,#000 50%,transparent 60%),
+      linear-gradient(180deg,transparent,#000 36%,#000 64%,transparent);
+    mask-image:radial-gradient(circle,#000 50%,transparent 60%),
+      linear-gradient(180deg,transparent,#000 36%,#000 64%,transparent);
+    -webkit-mask-size:4px 4px,100% 50%;mask-size:4px 4px,100% 50%;
+    -webkit-mask-repeat:repeat,no-repeat;mask-repeat:repeat,no-repeat;
+    -webkit-mask-composite:source-in;mask-composite:intersect;
+    mix-blend-mode:screen;animation:revealsweep 1.7s linear infinite}
+  /* secondo strato di flusso, in controfase: raddoppia la sensazione di "materia che scorre" */
+  .gen .reveal2{position:absolute;inset:-14%;z-index:1;background-size:cover;background-position:center;
+    filter:blur(3px) saturate(1.7) brightness(1.3);transform:scale(1.1);pointer-events:none;opacity:.7;
+    -webkit-mask-image:linear-gradient(180deg,transparent,#000 45%,transparent 70%);
+    mask-image:linear-gradient(180deg,transparent,#000 45%,transparent 70%);
+    -webkit-mask-size:100% 60%;mask-size:100% 60%;
+    -webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;
+    mix-blend-mode:screen;animation:revealsweep2 2.3s linear infinite}
+  @keyframes revealsweep2{0%{-webkit-mask-position:0 130%;mask-position:0 130%}
+    100%{-webkit-mask-position:0 -60%;mask-position:0 -60%}}
+  @keyframes revealsweep{
+    0%{-webkit-mask-position:0 0,0 -55%;mask-position:0 0,0 -55%}
+    100%{-webkit-mask-position:0 0,0 130%;mask-position:0 0,0 130%}}
+  /* velo blu futuristico LEGGERO: da' la tinta senza nascondere l'immagine (si deve vedere di piu') */
+  .thumb.gen::after{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;
+    background:radial-gradient(circle at 50% 45%,rgba(40,80,170,.06),rgba(10,22,55,.30) 98%),
+      linear-gradient(rgba(70,120,230,.14),rgba(130,90,240,.14))}
+  .gen .stfill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--accent),#bcd6ff);
+    box-shadow:0 0 9px rgba(91,140,255,.85);transition:width .2s}
+  .gen .parts{position:absolute;inset:0;z-index:3}
+  /* puntini che salgono — più grandi e con doppio alone luminoso (glow accentuato) */
+  .gen .parts i{position:absolute;width:4px;height:4px;border-radius:50%;
+    background:radial-gradient(circle,#f2f8ff,#a6cbff 70%);
+    box-shadow:0 0 10px 3px rgba(170,205,255,.98),0 0 22px 7px rgba(91,140,255,.6);
+    animation:floaty linear infinite}
+  @keyframes floaty{0%{transform:translateY(16px) scale(.35);opacity:0}
+    14%{opacity:1}78%{opacity:.75}100%{transform:translateY(-42px) scale(1.35);opacity:0}}
+  .gen .holo{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;z-index:4;text-shadow:0 0 14px rgba(91,140,255,.85);pointer-events:none}
+  .gen .holo .pc{font-size:30px;font-weight:800;letter-spacing:1px;color:#e2edff;
+    font-variant-numeric:tabular-nums;animation:flick 3.4s ease-in-out infinite}
+  .gen .holo .lbl{font-size:9.5px;letter-spacing:3px;text-transform:uppercase;color:#84acff;margin-top:3px}
+  @keyframes flick{0%,100%{opacity:1}47%{opacity:.9}50%{opacity:.55}53%{opacity:.92}}
+  .gen .st{background:linear-gradient(transparent,rgba(5,8,16,.9));color:#bcd0ff;z-index:4;
+    font-family:Consolas,monospace;font-size:10.5px;letter-spacing:.4px}
+  .gen .stbar{background:rgba(91,140,255,.2)}
+  .gen .stbar>div{background:linear-gradient(90deg,var(--accent),#bcd6ff);box-shadow:0 0 9px rgba(91,140,255,.85)}
+  /* ============ HUD di completamento totale ============ */
+  .hud{display:flex;align-items:center;gap:14px;margin:2px 18px 10px;padding:10px 14px;border-radius:12px;
+    background:linear-gradient(100deg,rgba(18,32,63,.85),rgba(10,14,26,.85));
+    border:1px solid rgba(91,140,255,.4);box-shadow:0 0 18px rgba(91,140,255,.12) inset;
+    animation:hudIn .45s var(--ease)}
+  @keyframes hudIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+  .hud-pc{font-size:26px;font-weight:800;color:#e2edff;font-variant-numeric:tabular-nums;
+    text-shadow:0 0 12px rgba(91,140,255,.8);min-width:74px}
+  .hud-pc small{font-size:14px;opacity:.7;margin-left:1px}
+  .hud-mid{flex:1;min-width:0}
+  .hud-bar{position:relative;height:8px;border-radius:5px;background:rgba(91,140,255,.15);overflow:hidden}
+  .hud-fill{height:100%;border-radius:5px;background:linear-gradient(90deg,var(--accent),#7c5bff,#bcd6ff);
+    background-size:200% 100%;box-shadow:0 0 12px rgba(91,140,255,.8);transition:width .22s linear;
+    animation:hudflow 3s linear infinite;will-change:width,background-position}
+  @keyframes hudflow{to{background-position:200% 0}}
+  .hud-bar::after{content:"";position:absolute;inset:0;width:40%;
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,.35),transparent);animation:hudshine 1.8s linear infinite}
+  @keyframes hudshine{0%{transform:translateX(-120%)}100%{transform:translateX(320%)}}
+  .hud-sub{font-size:11.5px;color:#9fb6e6;margin-top:5px;font-family:Consolas,monospace;letter-spacing:.4px}
+  /* HUD della fase di ANALISI: tinta verde/teal per distinguerla dalla generazione (blu) */
+  .hud.analyze{border-color:rgba(52,199,150,.45);
+    background:linear-gradient(100deg,rgba(14,45,38,.85),rgba(10,22,20,.85))}
+  .hud.analyze .hud-pc{color:#d6ffef;text-shadow:0 0 12px rgba(52,199,150,.8)}
+  .hud.analyze .hud-fill{background:linear-gradient(90deg,#34c796,#8affd6,#34c796);box-shadow:0 0 12px rgba(52,199,150,.8)}
+  .hud.analyze .hud-sub{color:#8fdcc2}
+  /* ============ log "a macchina da scrivere" stile film ============ */
+  .livelog{font-size:12.5px;color:#bcd6ff;padding:9px 18px 0;display:flex;gap:8px;align-items:center;
+    font-family:Consolas,monospace;letter-spacing:.3px}
+  .livelog .ic{color:var(--accent)}
+  .livelog .tw{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-shadow:0 0 8px rgba(91,140,255,.4)}
+  .livelog .tw::after{content:"▌";color:var(--accent);animation:cursor 1s steps(1) infinite;margin-left:1px}
+  @keyframes cursor{50%{opacity:0}}
+  details{padding:0 18px 12px}
+  details summary{cursor:pointer;color:var(--muted);font-size:13px}
+  .log{font-size:13.5px;color:var(--muted);background:var(--panel2);border-radius:8px;padding:10px 12px;
+    margin-top:8px;max-height:220px;overflow:auto;white-space:pre-wrap}
+  .prompt-edit{font-size:14px;min-height:140px;font-family:Consolas,monospace;white-space:pre;overflow-x:auto}
+  .launchbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--panel2);
+    border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin:4px 18px 14px}
+  .launchbar input[type=datetime-local]{width:auto}
+  .hint{font-size:13px;color:var(--muted)}
+  #lightbox{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;
+    z-index:50;flex-direction:column;gap:10px;padding:20px;overflow:hidden}
+  .lb-stage{display:flex;align-items:center;gap:12px;max-width:98vw}
+  .lb-imgwrap{position:relative;display:flex}
+  #lightbox img{max-width:82vw;max-height:82vh;border-radius:8px;cursor:zoom-in;user-select:none;display:block}
+  #lightbox video{max-width:82vw;max-height:82vh;border-radius:8px;display:block;background:#000}
+  #lightbox .cap{color:#cbd3e1;font-size:13px;max-width:900px;text-align:center;position:relative;z-index:2}
+  .lb-nav,.lb-tools button{display:flex;align-items:center;justify-content:center;
+    background:rgba(22,27,36,.85);border:1px solid var(--border);color:var(--text);border-radius:50%;padding:0;
+    cursor:pointer;flex-shrink:0}
+  .lb-nav{width:46px;height:46px;position:relative;z-index:5}  /* sopra la foto anche zoomata */
+  .lb-nav:hover{border-color:var(--accent);color:#fff}
+  /* cestino + chiudi ancorati all'angolo in alto a destra DELL'IMMAGINE */
+  .lb-tools{position:absolute;top:8px;right:8px;display:flex;gap:8px;z-index:4}
+  .lb-tools button{width:38px;height:38px}
+  #lb-del:hover{border-color:var(--err);color:var(--err);background:rgba(40,20,20,.9)}
+  #lb-close:hover{border-color:var(--accent);color:#fff}
+  #ctxmenu{position:fixed;z-index:80;display:none;background:var(--panel2);border:1px solid var(--border-hi);
+    border-radius:var(--r-m);padding:4px;min-width:240px;box-shadow:var(--shadow-pop);backdrop-filter:blur(10px)}
+  #ctxmenu button{display:flex;align-items:center;gap:9px;width:100%;text-align:left;background:none;border:none;
+    color:var(--text);padding:8px 10px;font:inherit;font-size:13px;font-weight:500;border-radius:var(--r-s);cursor:pointer}
+  #ctxmenu button:hover{background:var(--accent-soft)}
+  #ctxmenu button .ic{color:var(--muted);flex-shrink:0}
+  /* badge voto (valutazione IA) in alto a sinistra sulla foto */
+  .score{position:absolute;top:6px;left:6px;z-index:3;display:flex;align-items:center;gap:4px;
+    background:rgba(8,10,14,.72);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.08);
+    border-radius:999px;padding:2px 8px;font-size:11.5px;font-weight:600;color:#fff;
+    font-variant-numeric:tabular-nums}
+  .score .ic{fill:#f5b04d;stroke:#f5b04d}
+  .score.s-hi{border-color:var(--ok)} .score.s-hi .ic{fill:var(--ok);stroke:var(--ok)}
+  .score.s-mid{border-color:var(--warn)}
+  .score.s-lo{border-color:var(--err)} .score.s-lo .ic{fill:var(--err);stroke:var(--err)}
+  .score.s-na{color:var(--muted)} .score.s-na .ic{fill:var(--muted);stroke:var(--muted)}
+  #lb-score{position:absolute;top:8px;left:8px;z-index:4;font-size:15px;padding:5px 11px}
+  .empty{color:var(--faint);text-align:center;padding:60px 0;border:1px dashed var(--border-hi);border-radius:var(--r-l)}
+  #toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#5c2222;color:#ffd7d7;
+    border:1px solid var(--err);border-radius:var(--r-m);padding:10px 16px;font-size:13.5px;display:none;z-index:60;
+    max-width:80vw;backdrop-filter:blur(10px);box-shadow:var(--shadow-pop)}
+  #namedlg{position:fixed;inset:0;background:rgba(5,7,10,.62);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;z-index:70}
+  #modeldlg{position:fixed;inset:0;background:rgba(5,7,10,.62);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;z-index:70}
+  .mrow{border:1px solid var(--border);border-radius:var(--r-m);padding:10px 12px;background:var(--panel2);
+    transition:border-color .14s}
+  .mrow:hover{border-color:var(--border-hi)}
+  .mrow .mtop{display:flex;align-items:center;gap:10px}
+  .mrow .mname{font-weight:600;font-size:13.5px}
+  .mrow .mkind{font-size:10.5px;font-weight:600;letter-spacing:.03em;color:var(--faint);
+    border:1px solid var(--border);border-radius:999px;padding:1px 8px;text-transform:uppercase}
+  .mrow .msize{margin-left:auto;color:var(--muted);font-size:12.5px;font-variant-numeric:tabular-nums}
+  .mrow .mdesc{font-size:12.5px;color:var(--muted);margin-top:3px;line-height:1.45}
+  .mrow .mprog{margin-top:7px;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .mrow .mbar{margin-top:4px}
+  .ok-ic{color:var(--ok);font-weight:600;display:inline-flex;align-items:center;gap:5px;font-size:13px}
+  .dlg{background:var(--panel);border:1px solid var(--border-hi);border-radius:16px;padding:18px;width:300px;
+    display:flex;flex-direction:column;gap:10px;box-shadow:var(--shadow-pop)}
+  .dlg img{width:100%;max-height:220px;object-fit:cover;border-radius:8px}
+  .presetbox{display:flex;flex-wrap:wrap;gap:8px}
+  .preset{width:72px;cursor:pointer;position:relative;text-align:center}
+  .preset img{width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--border)}
+  .preset:hover img{border-color:var(--accent)}
+  .preset .nm{display:block;font-size:10.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .preset .px{position:absolute;top:-5px;right:0;background:var(--panel2);border:1px solid var(--border);
+    border-radius:50%;width:17px;height:17px;display:none;align-items:center;justify-content:center;color:var(--err)}
+  .preset:hover .px{display:flex}
+  .thumb .bk{left:5px;right:auto}
+  /* pannello agente */
+  #content{display:flex;flex:1;min-height:0}
+  #agentpanel{position:relative;width:var(--apw);max-width:70vw;flex-shrink:0;display:none;
+    background:var(--panel);border-left:1px solid var(--border);flex-direction:column;min-height:0}
+  #agentpanel.open{display:flex}
+  #ap-resize{position:absolute;left:0;top:0;bottom:0;width:7px;cursor:ew-resize;z-index:2}
+  #ap-resize:hover,#ap-resize.drag{background:var(--accent)}
+  #ap-send.pulse{background:var(--accent);color:#fff;border-color:var(--accent);
+    animation:sendpulse 1.6s ease-in-out infinite}
+  @keyframes sendpulse{0%,100%{box-shadow:0 0 0 0 rgba(91,140,255,.55)}50%{box-shadow:0 0 0 7px rgba(91,140,255,0)}}
+  #ap-send:disabled{opacity:.45;cursor:default}
+  .ap-head{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+  .ap-head h3{margin:0;font-size:15px;white-space:nowrap}
+  .ap-head select{flex:1;min-width:120px;height:38px}
+  .ap-head button{height:38px}
+  .fsbtn{width:38px;font-size:15px;padding:0}
+  .ap-chat{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+  .msg{max-width:88%;padding:9px 12px;border-radius:11px;font-size:var(--chatfs,16px);white-space:pre-wrap}
+  .msg.streaming::after{content:"▌";animation:blink 1s step-end infinite}
+  @keyframes blink{50%{opacity:0}}
+  .msg.user{align-self:flex-end;background:#20304d;border:1px solid #2c4370}
+  .msg.agent{align-self:flex-start;background:var(--panel2);border:1px solid var(--border)}
+  .msg.log{align-self:center;color:var(--muted);font-size:12px;background:none;padding:2px 8px;text-align:center}
+  .ap-preview{padding:10px 16px;border-top:1px solid var(--border);display:none;gap:10px;align-items:center}
+  .ap-preview img{width:110px;border-radius:8px;cursor:pointer}
+  .ap-preview .col{flex:1;display:flex;flex-direction:column;gap:8px}
+  .ap-input{padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px}
+  .ap-input textarea{flex:1;min-height:44px;max-height:120px}
+  .ap-status{font-size:12px;color:var(--muted);padding:0 16px 8px;display:flex;align-items:center;gap:8px}
+  /* avviso setup + guida modelli */
+  #setup-banner{display:none;align-items:center;gap:10px;margin:0 0 12px;padding:11px 14px;border-radius:10px;
+    background:#3a2a12;border:1px solid var(--warn);color:#ffe0b0;font-size:13.5px}
+  #setup-banner a{color:#fff;font-weight:700;cursor:pointer;text-decoration:underline;white-space:nowrap}
+  .sg{margin:8px 0 4px;padding:12px 14px;border-radius:10px;font-size:13.5px;line-height:1.5}
+  .sg.go{background:#152741;border:1px solid var(--accent);color:#dbe6ff}
+  .sg.ok{background:#12301f;border:1px solid var(--ok);color:#bff0d4;display:flex;align-items:center;gap:8px}
+  .mgroup{display:flex;gap:10px;align-items:flex-start;margin:12px 2px 2px}
+  .mgroup .gnum{flex:0 0 22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;
+    font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center}
+  .mgroup .gtitle{font-size:13.5px;font-weight:700;color:var(--text)}
+  .mgroup .gsub{font-size:12px;color:var(--muted)}
+  .mrow.done{opacity:.75}
+  .mtag{background:var(--accent);color:#fff;border-radius:10px;padding:0 8px;font-size:10.5px;
+    font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+</style>
+</head>
+<body>
+<header>
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5b8cff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+  <h1><span>Prompt Studio</span></h1>
+  <span style="color:var(--muted);font-size:13px" data-i18n="hdrSub">schede &rsaquo; prompt LLM &rsaquo; foto</span>
+  <button class="btn-small" style="margin-left:auto;font-weight:700" id="langtoggle" onclick="toggleLang()" data-i18n-title="langToggleT" title="Lingua / Language">EN</button>
+  <button class="btn-small" id="btn-models" onclick="toggleModels()" data-i18n-title="btnModelsT" title="scarica o gestisci i modelli AI">
+    <svg class="ic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.89 1.45l8 4A2 2 0 0 1 22 7.24v9.53a2 2 0 0 1-1.11 1.79l-8 4a2 2 0 0 1-1.79 0l-8-4a2 2 0 0 1-1.1-1.8V7.24a2 2 0 0 1 1.11-1.79l8-4a2 2 0 0 1 1.78 0z"/><polyline points="2.32 6.16 12 11 21.68 6.16"/><line x1="12" y1="22.76" x2="12" y2="11"/></svg>
+    <span data-i18n="btnModels">Modelli</span></button>
+  <button class="btn-small" id="btn-unload" onclick="unloadRam()" data-i18n-title="btnUnloadT" title="scarica tutti i modelli LLM dalla RAM/VRAM e libera la memoria di ComfyUI">
+    <svg class="ic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    <span data-i18n="btnUnload">Scarica RAM</span></button>
+  <button class="btn-small" id="btn-shutdown" onclick="shutdownAll()" data-i18n-title="btnShutdownT" title="arresta Prompt Studio, LLM e ComfyUI (come Arresta_Prompt_Studio.bat)">
+    <svg class="ic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>
+    <span data-i18n="btnShutdown">Arresta</span></button>
+  <button class="btn-small" onclick="toggleAgent()">
+    <svg class="ic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></svg>
+    <span data-i18n="btnAgent">Agente workflow</span></button>
+  <div class="status">
+    <span><i class="dot" id="dot-comfy"></i>ComfyUI</span>
+    <span><i class="dot" id="dot-llm"></i>LLM</span>
+  </div>
+</header>
+<div id="content">
+<main>
+  <div class="card" id="form-card">
+    <div id="setup-banner"></div>
+    <div class="tabbar" id="tabbar"></div>
+
+    <div class="modetab" id="modetab">
+      <button type="button" data-mode="photo" class="on">
+        <svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        <span data-i18n="modePhoto">Foto</span></button>
+      <button type="button" data-mode="video">
+        <svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/></svg>
+        <span data-i18n="modeVideo">Video</span></button>
+    </div>
+    <div class="modetab sub" id="vmodetab" style="display:none">
+      <button type="button" data-vmode="regista" class="on" data-i18n="vRegista" data-i18n-title="vRegistaT" title="Dai la foto iniziale (e se vuoi foto finale + bozza di regia): l'app armonizza i prompt, crea le due foto e il video.">Regista</button>
+      <button type="button" data-vmode="start" data-i18n="vStart" data-i18n-title="vStartT" title="Carichi la foto di partenza e descrivi il movimento: il video parte da lì.">Foto + testo</button>
+      <button type="button" data-vmode="both" data-i18n="vBoth" data-i18n-title="vBothT" title="Carichi foto di inizio E di fine (già pronte): il video le collega.">Due foto</button>
+    </div>
+
+    <div class="row">
+      <div style="flex:1"><label data-i18n="tabName">Nome scheda</label>
+        <input id="title" data-i18n-ph="tabNamePh" placeholder="es. Spiaggia tramonto"></div>
+      <div style="flex:1" id="imodel-box"><label data-i18n="imodel">Modello foto</label>
+        <select id="imodel"></select></div>
+      <div style="flex:0 0 118px" id="maxwords-box"><label data-i18n="maxwords" data-i18n-title="maxwordsT" title="Lunghezza indicativa dei prompt: una parola in più o in meno non cambia nulla">Lungh. prompt</label>
+        <input id="maxwords" type="number" min="20" max="150" step="5" value="55"></div>
+    </div>
+
+    <label id="amb-label">Ambientazione / scenario — [tra parentesi quadre] ciò che DEVE apparire in ogni foto</label>
+    <textarea id="amb" placeholder="Es.: al tramonto su una spiaggia mediterranea, indossa un [bikini rosso], [cocktail in mano]... — le [parentesi quadre] rendono l'elemento obbligatorio in ogni foto"></textarea>
+
+    <div id="vend-box" style="display:none">
+      <label data-i18n="vendLabel">Foto finale — come si conclude l'inquadratura (vuoto: la inventa il regista)</label>
+      <textarea id="vend" style="min-height:44px" data-i18n-ph="vendPh" placeholder="Es.: guarda la papera che ora galleggia in acqua alla sua sinistra, busto leggermente ruotato"></textarea>
+    </div>
+    <div id="vplot-box" style="display:none">
+      <label data-i18n="vplotLabel">Bozza di regia — la traccia del movimento tra le due foto (vuoto: la scrive il regista)</label>
+      <textarea id="vplot" style="min-height:44px" data-i18n-ph="vplotPh" placeholder="Es.: posa la papera in acqua alla sua sinistra e la segue con lo sguardo"></textarea>
+    </div>
+
+    <label id="style-label" data-i18n="styleLabel">Stile fotografico forzato (opzionale — apri i gruppi, passa sopra col mouse per i dettagli)</label>
+    <div class="stylechips" id="stylechips"></div>
+
+    <label id="persona-label" data-i18n="personaLabel">Persona — configura il personaggio: la descrizione è garantita in ogni foto</label>
+    <div id="personabox" style="border:1px solid var(--border,#333);border-radius:8px;padding:8px 10px;margin-bottom:10px">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <label class="checkline" style="margin:0"><input type="checkbox" id="personaon"><span data-i18n="personaOn">Attiva</span></label>
+        <select id="personapreset" style="flex:1;min-width:130px"><option value="">— preset bellezza —</option></select>
+        <select id="charsel" style="flex:1;min-width:130px"><option value="">— personaggi salvati —</option></select>
+        <input id="charname" data-i18n-ph="charnamePh" placeholder="nome personaggio" style="flex:1;min-width:110px">
+        <button type="button" id="charsave" class="btn-small" data-i18n="charSave">Salva</button>
+        <button type="button" id="chardel" class="btn-small" data-i18n="charDel">Elimina</button>
+      </div>
+      <div id="personagrid" style="margin-top:8px;display:none;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px"></div>
+      <div id="personapreview" class="job-sub" style="margin-top:6px"></div>
+    </div>
+
+    <div class="row">
+      <div style="flex:1" id="soggetto-box"><label data-i18n="soggetto">Soggetto / trigger LoRA</label>
+        <input id="soggetto" data-i18n-ph="soggettoPh" placeholder="es. anna, a woman..."></div>
+      <div style="flex:1" id="wfsel-box"><label id="wfsel-label">Workflow (opzionale)</label>
+        <select id="wfsel"><option value="">— nessuno —</option></select></div>
+    </div>
+
+    <div id="refslots" style="display:none"></div>
+
+    <div id="videoopts" class="row" style="display:none">
+      <div style="flex:0 0 118px"><label data-i18n="vsecs">Durata video (sec)</label>
+        <input id="vsecs" type="number" min="1" max="15" step="1" value="5"></div>
+      <div style="flex:0 0 88px"><label data-i18n="fps" data-i18n-title="fpsT" title="12/15 fps: genera meta' dei frame (piu' veloce), poi un interpolatore esterno (es. Topaz) ricostruisce i frame mancanti">FPS</label>
+        <select id="vfps"><option>12</option><option>15</option><option selected>24</option><option>30</option></select></div>
+      <div style="flex:0 0 92px" id="psteps-box"><label data-i18n="pstepsLabel" data-i18n-title="pstepsT" title="Step di Klein per le due foto del regista (separati dagli step del video)">Steps foto</label>
+        <input id="psteps" type="number" min="1" max="12" value="6"></div>
+      <div style="flex:1;align-self:flex-end"><div class="vinfo" id="vinfo"></div></div>
+    </div>
+    <div id="videoopts2" class="row" style="display:none;align-items:center">
+      <div style="flex:0 0 92px"><label data-i18n="crfLabel" data-i18n-title="crfT" title="Compressione del frame di riferimento (0-51): più BASSO = riferimento più nitido = partenza del video più nitida. Consigliato: 12.">CRF rif.</label>
+        <input id="vcrf" type="number" min="0" max="51" value="12"></div>
+      <div style="flex:0 0 96px"><label data-i18n="speedLabel" data-i18n-title="speedT" title="Velocità del movimento: 1× = naturale, >1× = movimenti più rapidi (contro l'effetto rallentatore). Agisce sul conditioning del modello; i FPS di riproduzione non cambiano.">Velocità</label>
+        <select id="vspeed"><option value="0.75">0.75×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></div>
+      <label class="checkline" style="margin:18px 0 0" data-i18n-title="easingT" title="Curva di denoise con easing cubico: ritmo più 'cinematografico', transizioni più morbide, meno sfarfallio. Costo: zero. Consigliato: attivo.">
+        <input type="checkbox" id="veasing"> <span data-i18n="easing">Easing sigma</span></label>
+      <label class="checkline" style="margin:18px 0 0" data-i18n-title="detailerT" title="Seconda passata leggera alla stessa risoluzione: aggiunge micro-dettaglio vero a pelle, capelli e stoffe e rende nitido l'ultimo frame. Costo misurato: +16% di tempo. Consigliato per i render finali.">
+        <input type="checkbox" id="vdetail"> <span data-i18n="detailer">Detailer HQ</span></label>
+      <label class="checkline" style="margin:18px 0 0" data-i18n-title="vcleanT" title="Sperimentale: crea una COPIA _pulito.mp4 con le gocce del VAE attenuate sulle aree piatte. L'originale resta intatto. Per risultati migliori usa la rimozione polvere/rumore di Topaz.">
+        <input type="checkbox" id="vclean"> <span data-i18n="vclean">Pulizia aree piatte</span></label>
+    </div>
+    <input type="checkbox" id="vauto" style="display:none">
+    <span id="vauto-row" style="display:none"></span>
+
+    <div class="row" id="params-row">
+      <div style="flex:1;min-width:110px" id="extra-box"><label data-i18n="extra">Istruzioni extra</label>
+        <input id="extra" data-i18n-ph="extraPh" placeholder="es. figura intera, luce naturale..."></div>
+      <div style="flex:0 0 58px" id="num-box"><label id="num-label">Foto</label>
+        <input id="num" type="number" min="1" max="200" value="6"></div>
+      <div style="flex:0 0 auto" id="size-box"><label data-i18n="size">Formato</label>
+        <select id="size">
+          <option value="512x512">512²</option>
+          <option value="768x768">768²</option>
+          <option value="1024x1024">1024²</option>
+          <option value="1280x1280">1280²</option>
+          <option value="1536x1536">1536²</option>
+          <option value="640x960">640×960 ↑</option>
+          <option value="832x1216" selected>832×1216 ↑</option>
+          <option value="1024x1536">1024×1536 ↑</option>
+          <option value="1152x1728">1152×1728 ↑</option>
+          <option value="1344x1728">1344×1728 ↑</option>
+          <option value="960x640">960×640 →</option>
+          <option value="1216x832">1216×832 →</option>
+          <option value="1536x1024">1536×1024 →</option>
+          <option value="1728x1152">1728×1152 →</option>
+          <option value="1728x1344">1728×1344 →</option>
+          <option value="custom" data-i18n="sizeCustom">Personalizzato…</option>
+        </select></div>
+      <div style="flex:0 0 55px" id="steps-box"><label id="steps-label">Steps</label>
+        <input id="steps" type="number" min="1" max="50" value="6"></div>
+    </div>
+
+    <div id="customsize" class="row" style="display:none">
+      <div style="flex:0 0 auto"><label data-i18n="customRes">Risoluzione personalizzata (px, passo 16)</label>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input id="cw" type="number" min="256" max="2048" step="16" value="1024" style="width:88px">
+          <span>×</span>
+          <input id="ch" type="number" min="256" max="2048" step="16" value="1536" style="width:88px">
+          <span id="mp-hint" class="hint" style="margin-left:6px"></span>
+        </div></div>
+    </div>
+
+    <div class="row">
+      <div style="flex:0 0 150px"><label data-i18n="seed">Seed (vuoto = caso)</label>
+        <input id="seed" data-i18n-ph="seedPh" placeholder="casuale"></div>
+      <div style="flex:1"><label data-i18n="dest">Cartella di destinazione</label>
+        <input id="dest" value=""></div>
+    </div>
+
+    <label id="lora-label" data-i18n="lora">LoRA</label>
+    <div id="loras"></div>
+
+    <label id="presets-label" data-i18n="presetsLabel">Personaggi salvati</label>
+    <div id="presets" class="presetbox"><span class="hint" data-i18n="presetsEmpty">Nessuno: salva una foto riuscita con il segnalibro.</span></div>
+
+    <label id="llm-label" data-i18n="llmLabel">Modello LLM</label>
+    <select id="model"></select>
+
+    <div class="checkgrid">
+      <label class="checkline" id="literal-row" data-i18n-title="literalT" title="Segue il testo alla lettera, senza ammorbidire né interpretare.">
+        <input type="checkbox" id="literal">
+        <span data-i18n="literal">Prompt letterali</span>
+      </label>
+      <label class="checkline" id="pstory-row" data-i18n-title="pstoryT" title="Le N foto diventano i capitoli di una storia cronologica: eventi consecutivi, orari, luce e meteo che evolvono, soggetto e outfit identici in ogni foto. Il numero di capitoli è il numero di foto richieste.">
+        <input type="checkbox" id="pstory">
+        <span data-i18n="pstory">Regista foto (storia)</span>
+      </label>
+      <label class="checkline" id="anatomy-row" data-i18n-title="anatomyT" title="Aggiunge a ogni foto la richiesta di corpi, mani e pose corretti (positivo per tutti; nel negativo, per i modelli che lo usano, vieta deformità e dita/arti extra o mancanti).">
+        <input type="checkbox" id="anatomy" checked>
+        <span data-i18n="anatomy">Anatomia corretta</span>
+      </label>
+      <label class="checkline" id="tagmode-row" data-i18n-title="tagmodeT" title="Invece di frasi descrittive, l'LLM scrive solo parole/tag separati da virgola (es. stanza, ragazza, vestito rosso, luce calda). Utile se il modello si perde con prompt lunghi.">
+        <input type="checkbox" id="tagmode">
+        <span data-i18n="tagmode">Prompt a parole chiave (tag)</span>
+      </label>
+      <label class="checkline" data-i18n-title="autolaunchT" title="Appena i prompt sono pronti parte la creazione, senza fermarsi per la revisione.">
+        <input type="checkbox" id="autolaunch" checked>
+        <span data-i18n="autolaunch">Avvia subito</span>
+      </label>
+    </div>
+
+    <div class="checkline" id="eval-row" style="margin-top:10px" data-i18n-title="evalonT" title="Dopo la generazione, Qwen (visione) dà a ogni foto un voto 1–10 su fedeltà al prompt e qualità (anatomia, fisica, mani, volti). Poi puoi filtrare le foto per voto.">
+      <input type="checkbox" id="evalon">
+      <span data-i18n="evalon">Valuta le foto con l'IA (voto 1–10)</span>
+      <span style="margin-left:auto;display:flex;align-items:center;gap:6px" data-i18n-title="evalEveryT" title="0 = valuta tutto alla fine del batch. Un numero N = valuta ogni N foto durante la generazione.">
+        <span class="hint" data-i18n="evalEvery">ogni</span>
+        <input id="evalevery" type="number" min="0" max="200" value="0" style="width:60px">
+        <span class="hint" data-i18n="evalEveryPhotos">foto (0=fine)</span>
+      </span>
+    </div>
+
+    <label class="checkline" id="evaldeep-row" style="margin-top:6px;display:none" data-i18n-title="evaldeepT" title="Valutazione multipla e in contraddittorio: dopo il primo voto, Qwen prova a smentire sé stesso (i difetti dell'acqua/tagli sono spesso falsi). Se si contraddice, rivaluta. Più lenta ma più affidabile. Tutti i passaggi finiscono nel log.">
+      <input type="checkbox" id="evaldeep">
+      <span data-i18n="evaldeep">Valutazione approfondita (contraddittorio, più affidabile)</span>
+    </label>
+    <div id="evalcrit-row" style="margin-top:6px;display:none">
+      <label data-i18n="evalcritLabel" data-i18n-title="evalcritT" title="Criteri TUOI su cui il giudice deve basare il voto (in aggiunta ai controlli tecnici di anatomia/scena, che restano sempre). Vuoto = valuta come sempre.">Criteri di valutazione (opzionale)</label>
+      <textarea id="evalcriteria" style="min-height:46px" data-i18n-ph="evalcritPh" placeholder="Es.: premia se il vestito è davvero rosso e la posa è elegante; penalizza se ci sono più di una persona o se lo sguardo non è in camera"></textarea>
+    </div>
+
+    <button class="btn-primary" id="go" onclick="startJob()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg><span data-i18n="goBtn">Genera i prompt di tutte le schede</span></button>
+    <div class="hint" style="margin-top:8px" data-i18n="goHint">L'LLM si carica una volta sola e crea i prompt di ogni scheda; poi rivedi
+    i prompt e avvii la creazione subito o la programmi a un orario.</div>
+  </div>
+
+  <div id="splitter" data-i18n-title="splitterT" title="trascina per ridimensionare"></div>
+
+  <div id="rightcol">
+    <div id="scorefilter" style="display:none;align-items:center;gap:8px;padding:0 2px 4px">
+      <span class="hint" data-i18n="scoreShow">Mostra foto con voto</span>
+      <select id="scorefilter-sel" style="width:auto;padding:4px 8px">
+        <option value="0" data-i18n="scoreAll">tutte</option>
+        <option value="6">≥ 6</option>
+        <option value="7">≥ 7</option>
+        <option value="8">≥ 8</option>
+        <option value="9">≥ 9</option>
+        <option value="10">= 10</option>
+      </select>
+    </div>
+    <div id="jobs"><div class="empty" data-i18n="jobsEmpty">Nessun job ancora. Aggiungi schede, scrivi le ambientazioni e genera i prompt.</div></div>
+    <div id="statsbar">
+      <button class="btn-small" id="sb-toggle" onclick="toggleStatsbar()" data-i18n-title="sbToggleT" title="mostra/nascondi statistiche"></button>
+      <div class="sb-body" id="sb-body">
+        <div class="meter"><span class="mlabel">CPU <b id="mv-cpu">–</b></span><div class="mbar"><div id="mb-cpu"></div></div></div>
+        <div class="meter"><span class="mlabel">RAM <b id="mv-ram">–</b></span><div class="mbar"><div id="mb-ram"></div></div></div>
+        <div class="meter"><span class="mlabel">GPU <b id="mv-gpu">–</b></span><div class="mbar"><div id="mb-gpu"></div></div></div>
+        <div class="meter"><span class="mlabel">VRAM <b id="mv-vram">–</b></span><div class="mbar"><div id="mb-vram"></div></div></div>
+        <div class="sb-info">
+          <span id="mv-temp">–</span>
+          <span id="mv-tps"></span>
+          <span id="mv-loaded" data-i18n-title="mvLoadedT" title="modelli LLM montati in memoria"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div id="agentpanel">
+  <div id="ap-resize" data-i18n-title="apResizeT" title="trascina per allargare"></div>
+  <div class="ap-head">
+    <h3 data-i18n="apHead">Agente workflow</h3>
+    <select id="ap-target"></select>
+    <button class="btn-small fsbtn" onclick="chatFont(-1)" data-i18n-title="chatSmallerT" title="riduci caratteri chat">A−</button>
+    <button class="btn-small fsbtn" onclick="chatFont(1)" data-i18n-title="chatBiggerT" title="ingrandisci caratteri chat">A+</button>
+    <button class="btn-small" onclick="toggleAgent()" data-i18n="close">Chiudi</button>
+  </div>
+  <div class="ap-chat" id="ap-chat">
+    <div class="msg log" data-i18n="agentWelcome">Scegli il modello di destinazione e descrivi il workflow che vuoi
+    (es. "workflow con immagine di riferimento e negative personalizzato"). L'agente lo costruisce,
+    lo testa su ComfyUI e itera finché non funziona. Puoi anche fargli domande.</div>
+  </div>
+  <div class="ap-status" id="ap-status"></div>
+  <div class="ap-preview" id="ap-preview">
+    <img id="ap-img" onclick="lightboxUrl(this.src)">
+    <div class="col">
+      <input id="ap-name" data-i18n-ph="apNamePh" placeholder="nome del workflow...">
+      <button class="btn-go" onclick="saveAgentWorkflow()" data-i18n="saveWf">Salva workflow</button>
+    </div>
+  </div>
+  <div class="ap-input">
+    <textarea id="ap-msg" data-i18n-ph="apMsgPh" placeholder="Descrivi il workflow o chiedi una modifica..."></textarea>
+    <button class="btn-small" id="ap-send" onclick="sendAgent()" data-i18n="send">Invia</button>
+  </div>
+</div>
+</div>
+
+<div id="lightbox">
+  <div class="lb-stage">
+    <button class="lb-nav" id="lb-prev" data-i18n-title="lbPrevT" title="foto precedente (freccia sinistra)"></button>
+    <div class="lb-imgwrap">
+      <img id="lb-img">
+      <video id="lb-vid" controls loop playsinline style="display:none"></video>
+      <div id="lb-score"></div>
+      <div class="lb-tools">
+        <button id="lb-folder" data-i18n-title="lbFolderT" title="apri la cartella con questa foto selezionata"></button>
+        <button id="lb-del" data-i18n-title="lbDelT" title="elimina questa foto"></button>
+        <button id="lb-close" data-i18n-title="lbCloseT" title="chiudi (Esc)"></button>
+      </div>
+    </div>
+    <button class="lb-nav" id="lb-next" data-i18n-title="lbNextT" title="foto successiva (freccia destra)"></button>
+  </div>
+  <div class="cap" id="lb-cap"></div>
+</div>
+<div id="ctxmenu"></div>
+<div id="toast" onclick="this.style.display='none'"></div>
+
+<div id="modeldlg">
+  <div class="dlg" style="width:620px;max-width:94vw">
+    <h4 style="margin:0" data-i18n="modelsTitle">Componenti e modelli AI</h4>
+    <div id="starter-guide"></div>
+    <div id="model-list" style="display:flex;flex-direction:column;gap:8px;max-height:56vh;overflow-y:auto"></div>
+    <div class="hint" style="margin-top:2px" data-i18n="modelsHint">I file finiscono da soli nella cartella giusta. I download si
+      possono interrompere e riprendere. Puoi chiudere questa finestra: gli scaricamenti proseguono da soli.</div>
+    <div style="display:flex;justify-content:flex-end">
+      <button class="btn-small" onclick="toggleModels()" data-i18n="close">Chiudi</button>
+    </div>
+  </div>
+</div>
+
+<div id="namedlg">
+  <div class="dlg">
+    <h4 style="margin:0" data-i18n="saveCharTitle">Salva personaggio</h4>
+    <img id="dlg-img" alt="">
+    <div class="hint" id="dlg-info"></div>
+    <input id="dlg-name" data-i18n-ph="dlgNamePh" placeholder="nome del personaggio..." maxlength="40">
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn-small" onclick="closeNameDlg()" data-i18n="cancel">Annulla</button>
+      <button class="btn-go" onclick="confirmPreset()" data-i18n="save">Salva</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+// ==================== i18n (bilingue EN/IT) ====================
+// Interfaccia bilingue: toggle nell'header, default inglese, scelta ricordata.
+// I testi statici usano data-i18n / data-i18n-title / data-i18n-ph; le stringhe
+// generate in JS usano tr('chiave', ...args) con segnaposto {0}, {1}...
+// NB: i messaggi del server (log job, note del giudice) restano nella lingua del server.
+const I18N = {
+  en: {
+    htmlLang: 'en', locale: 'en-US',
+    hdrSub: 'tabs › LLM prompts › photos',
+    btnModels: 'Models', btnModelsT: 'download or manage the AI models',
+    btnUnload: 'Free RAM', btnUnloadT: 'unload all LLM models from RAM/VRAM and free ComfyUI memory',
+    btnShutdown: 'Shut down', btnShutdownT: 'shut down Prompt Studio, LLM and ComfyUI (like Arresta_Prompt_Studio.bat)',
+    btnAgent: 'Workflow agent',
+    langToggleT: 'Lingua / Language',
+    modePhoto: 'Photos', modeVideo: 'Video',
+    vRegista: 'Director', vRegistaT: 'You give the starting photo (and optionally an ending photo + a rough plot): the app harmonizes the prompts, creates the two photos and the video.',
+    vStart: 'Photo + text', vStartT: 'You upload the starting photo and describe the motion: the video starts from there.',
+    vBoth: 'Two photos', vBothT: 'You upload a start AND an end photo (already made): the video links them.',
+    tabName: 'Tab name', tabNamePh: 'e.g. Beach sunset',
+    imodel: 'Photo model',
+    maxwords: 'Prompt length', maxwordsT: 'Rough prompt length: one word more or less makes no difference',
+    ambLabelPhoto: 'Setting / scenario — [in square brackets] what MUST appear in every photo',
+    ambPhPhoto: "E.g.: at sunset on a Mediterranean beach, wearing a [red bikini], [cocktail in hand]... — the [square brackets] make the element mandatory in every photo",
+    ambLabelRegista: 'Starting photo — the opening scene of the video (the director refines it)',
+    ambPhRegista: 'E.g.: a woman in the bathtub, immersed in the water, looking at the lens with a rubber duck in her hand',
+    ambLabelMotion: 'Video motion — literal text (simple, concrete English)',
+    ambPhMotion: 'E.g.: The woman slowly turns toward the camera and smiles, her hair moving gently in the breeze',
+    vendLabel: 'Ending photo — how the shot ends (empty: the director invents it)',
+    vendPh: 'E.g.: looks at the duck now floating in the water to her left, torso slightly turned',
+    vplotLabel: 'Plot draft — the outline of the motion between the two photos (empty: the director writes it)',
+    vplotPh: 'E.g.: sets the duck down in the water to her left and follows it with her gaze',
+    styleLabel: 'Forced photographic style (optional — open the groups, hover for details)',
+    personaLabel: 'Persona — configure the character: the description is guaranteed in every photo',
+    personaOn: 'Enable', personaPresetPh: '— beauty preset —', charselPh: '— saved characters —',
+    charnamePh: 'character name', charSave: 'Save', charDel: 'Delete',
+    personaPickAbove: 'choose the options above',
+    soggetto: 'Subject / LoRA trigger', soggettoPh: 'e.g. anna, a woman...',
+    wfselPhoto: 'Workflow (optional)', wfselVideo: 'Video workflow', wfselNonePh: '— none —',
+    wfNoneUseModel: '— none: use the model above —',
+    vsecs: 'Video length (sec)',
+    fps: 'FPS', fpsT: '12/15 fps: generates half the frames (faster), then an external interpolator (e.g. Topaz) rebuilds the missing frames',
+    pstepsLabel: 'Photo steps', pstepsT: 'Klein steps for the director’s two photos (separate from the video steps)',
+    crfLabel: 'Ref CRF', crfT: 'Compression of the reference frame (0-51): LOWER = sharper reference = sharper video start. Recommended: 12.',
+    speedLabel: 'Speed', speedT: 'Motion speed: 1× = natural, >1× = faster motion (against the slow-motion effect). Acts on the model conditioning; playback FPS do not change.',
+    easing: 'Easing sigma', easingT: "Denoise curve with cubic easing: more 'cinematic' pacing, softer transitions, less flicker. Cost: zero. Recommended: on.",
+    detailer: 'HQ detailer', detailerT: 'Second light pass at the same resolution: adds real micro-detail to skin, hair and fabrics and sharpens the last frame. Measured cost: +16% time. Recommended for final renders.',
+    vclean: 'Flat-area cleanup', vcleanT: 'Experimental: creates a _pulito.mp4 COPY with the VAE dots attenuated on flat areas. The original stays untouched. For better results use Topaz dust/noise removal.',
+    extra: 'Extra instructions', extraPh: 'e.g. full figure, natural light...',
+    numPhoto: 'Photos', numVideo: 'Video',
+    size: 'Format', sizeCustom: 'Custom…',
+    steps: 'Steps', stepsVideo: 'Video steps',
+    customRes: 'Custom resolution (px, step 16)',
+    seed: 'Seed (empty = random)', seedPh: 'random',
+    dest: 'Destination folder',
+    lora: 'LoRA', loraNone: 'No LoRA in models/loras', loraStrengthT: 'strength',
+    presetsLabel: 'Saved characters', presetsEmpty: 'None: save a good photo with the bookmark.',
+    llmLabel: 'LLM model',
+    literal: 'Literal prompts', literalT: 'Follows the text to the letter, without softening or interpreting it.',
+    pstory: 'Photo director (story)', pstoryT: 'The N photos become the chapters of a chronological story: consecutive events, times, evolving light and weather, identical subject and outfit in every photo. The number of chapters equals the number of requested photos.',
+    anatomy: 'Correct anatomy', anatomyT: 'Adds to every photo the request for correct bodies, hands and poses (positive for all; in the negative, for models that use it, forbids deformities and extra/missing fingers/limbs).',
+    tagmode: 'Keyword prompts (tags)', tagmodeT: "Instead of descriptive sentences, the LLM writes only comma-separated words/tags (e.g. room, girl, red dress, warm light). Useful if the model gets lost with long prompts.",
+    autolaunch: 'Start now', autolaunchT: 'As soon as the prompts are ready the creation starts, without stopping for review.',
+    evalon: 'Rate the photos with AI (score 1–10)', evalonT: 'After generation, Qwen (vision) gives each photo a 1–10 score on prompt fidelity and quality (anatomy, physics, hands, faces). Then you can filter the photos by score.',
+    evalEvery: 'every', evalEveryPhotos: 'photos (0=end)', evalEveryT: '0 = rate everything at the end of the batch. A number N = rate every N photos during generation.',
+    evaldeep: 'In-depth evaluation (adversarial, more reliable)', evaldeepT: 'Multiple, adversarial evaluation: after the first score, Qwen tries to refute itself (water/cropping defects are often false). If it contradicts itself, it re-scores. Slower but more reliable. Every step ends up in the log.',
+    evalcritLabel: 'Evaluation criteria (optional)', evalcritT: 'YOUR criteria the judge must base the score on (in addition to the technical anatomy/scene checks, which always remain). Empty = rate as usual.',
+    evalcritPh: 'E.g.: reward if the dress is really red and the pose is elegant; penalize if there is more than one person or if the gaze is not at the camera',
+    goBtn: 'Generate the prompts of all tabs',
+    goHint: 'The LLM loads once and creates the prompts of each tab; then you review the prompts and start the creation now or schedule it for a time.',
+    splitterT: 'drag to resize', apResizeT: 'drag to widen',
+    scoreShow: 'Show photos with score', scoreAll: 'all',
+    jobsEmpty: 'No jobs yet. Add tabs, write the settings and generate the prompts.',
+    sbToggleT: 'show/hide statistics', statsWord: 'statistics',
+    mvLoadedT: 'LLM models loaded in memory',
+    apHead: 'Workflow agent', chatSmallerT: 'smaller chat font', chatBiggerT: 'bigger chat font', close: 'Close',
+    agentWelcome: 'Choose the target model and describe the workflow you want (e.g. "workflow with a reference image and custom negative"). The agent builds it, tests it on ComfyUI and iterates until it works. You can also ask it questions.',
+    apNamePh: 'workflow name...', saveWf: 'Save workflow',
+    apMsgPh: 'Describe the workflow or ask for a change...', send: 'Send',
+    lbPrevT: 'previous photo (left arrow)', lbNextT: 'next photo (right arrow)',
+    lbFolderT: 'open the folder with this photo selected', lbDelT: 'delete this photo', lbCloseT: 'close (Esc)',
+    modelsTitle: 'AI components and models',
+    modelsHint: 'The files land in the right folder by themselves. Downloads can be paused and resumed. You can close this window: the downloads keep going on their own.',
+    saveCharTitle: 'Save character', dlgNamePh: 'character name...', cancel: 'Cancel', save: 'Save',
+    addTab: 'Add tab', tabDefault: 'Tab {0}', removeT: 'remove',
+    // fasi
+    ph_queued: 'Queued', ph_llm_loading: 'Loading LLM…', ph_prompting: 'Writing the prompts…',
+    ph_prompts_ready: 'Prompts ready — review and start', ph_scheduled: 'Scheduled',
+    ph_generating: 'Generating the photos…', ph_evaluating: 'Quality analysis…',
+    ph_done: 'Done', ph_error: 'Error', ph_cancelled: 'Cancelled',
+    genVideoPhase: 'Generating the video…',
+    nounPhoto: 'photo', nounVideo: 'video', nounClip: 'clip', nounPhotos: 'photos',
+    materialize: '// materializing {0}/{1} {2}', remainWord: 'remaining {0}',
+    analyzePhase: '// analysis phase · rating photo {0}/{1} — you can cancel',
+    missingWord: '{0} missing', minsLeft: '{0} left',
+    cancelBtn: 'Cancel', removeBtn: 'Remove',
+    startNow: 'Start now', orWord: 'or', schedule: 'Schedule', scheduledAt: 'scheduled: {0}',
+    saveChanges: 'Save changes', onePromptPerLine: 'one prompt per line — you can edit, delete or add lines',
+    promptsN: 'Prompts ({0})', photoN: 'Photo {0}', scoreWord: 'score', seedWord: 'seed',
+    effectivePositive: '→ effective POSITIVE sent to the model (with anatomy/styles/forced):',
+    controlLog: 'Control log', openFolderT: 'open folder',
+    preparing: '{0} {1}: preparing…', stepOf: 'step {0}/{1}', materializeShort: 'materializing',
+    errWord: 'error', pendingN: '+{0} waiting',
+    renderT: 'render {0}', renderTotalT: '{0} · total with loading {1}',
+    dragToFrameT: 'drag into First/Last frame', delPhotoT: 'delete photo',
+    saveAsCharT: 'save as character (seed + settings)',
+    // jobCfgChips
+    chipStep: 'step', chipSeed: 'seed', chipSeedRandom: 'random', chipMode: 'mode',
+    chipDuration: 'duration', chipFps: 'fps', chipSpeed: 'speed', chipCRF: 'CRF',
+    chipEasing: 'easing', chipDetailer: 'HQ detailer', chipPhotoSteps: 'photo steps',
+    chipLiteral: 'literal', chipTag: 'tag', chipAnatomy: 'anatomy', chipWords: '~words',
+    chipLoRA: 'LoRA', chipStyles: 'styles', chipPersona: 'persona', chipConfigured: 'configured', chipSubject: 'subject',
+    cfgRegista: 'Director', cfgBoth: 'Two photos', cfgStart: 'Photo + text',
+    // ref slots
+    registaOnMsg: 'Director mode on: I generate the start and end photos from your prompts (the reviewer harmonizes start and end, the director writes the motion on your draft, timings calibrated to the duration).',
+    firstFrame: 'First frame (start)', lastFrame: 'Last frame (end)',
+    sampleImageN: 'Sample image {0}', sampleImage: 'Sample image',
+    loaded: 'loaded', missing: 'missing', removeImgT: 'remove image',
+    dropHere: 'Drag the image here or click to choose it',
+    vinfoRegista: 'photo and video with the same seed', vinfoBoth: 'from the start frame to the end frame',
+    vinfoStart: 'starts from the uploaded photo', vinfoFrames: '≈ {0} frames — {1}',
+    // setup / models
+    grpBaseTitle: 'Engines (required)', grpBaseSub: 'The heart of the program: without these nothing starts.',
+    grpImageTitle: 'Image model (at least one)', grpImageSub: 'This is what draws the photos. Klein is the recommended one to start.',
+    grpTextTitle: 'Prompt writer', grpTextSub: 'The text model that turns your sentences into prompts.',
+    grpVideoTitle: 'Video (LTX 2.3)', grpVideoSub: 'Image-to-video engine: animates your photos. Optional, ~53 GB in total.',
+    grpOptTitle: 'Optional', grpOptSub: 'Extras not needed to create photos.',
+    setupAllReady: 'Everything ready to create photos. Here you can add more models whenever you want.',
+    setupDownloading: 'Downloading what you need to start… leave the window open or close it, it keeps going on its own. {0} components left.',
+    setupNeed: 'To create your first photos you need 4 things, in order: the image engine, the text engine, a model that draws and the model that writes the prompts. I can download them all for you:',
+    downloadAll: 'Download everything you need to start', orPickBelow: 'or pick below one by one',
+    installed: 'installed', downloadBtn: 'Download', cancelDl: 'Cancel',
+    fileProg: 'file {0}/{1}: {2} — {3} / {4} ({5}%) · {6} {7}',
+    dlError: 'error: {0} — retry (resumes where it stopped)',
+    recommended: 'recommended', toDownload: ' — to download',
+    missRuntime: 'image engine', missTextEngine: 'text engine', missImage: 'an image model', missWriter: 'prompt writer',
+    stillMissing: 'Still missing to create photos:', openGuideDl: 'Open the guide and download →',
+    // agent
+    agentLoading: 'loading agent into RAM ({0})...', agentFast: ' · fast (VRAM)', agentSafe: ' · in RAM',
+    agentReady: 'agent ready — {0}{1}', agentLoadErr: 'agent load error: {0}',
+    agQueued: 'queued', agLoading: 'loading the agent model', agWorking: 'working', agTesting: 'testing on ComfyUI',
+    agIteration: 'iteration {0}', agTokS: '{0} token/s', agStepP: 'step {0}/{1}', stop: 'Stop',
+    wfSaved: 'Workflow saved: you’ll find it in "Photo model" as "WF: {0}".',
+    // ctx menu
+    ctxRegen1: 'Regenerate 1 photo from this prompt', ctxRegen4: 'Regenerate 4 variants (new seeds)',
+    ctxRegenMod: 'Regenerate 4 variants with a change…', ctxLoadEditor: 'Load this photo’s values into the editor',
+    ctxAnimate: 'Animate this photo (video)',
+    // messages (toasts / errors)
+    msgRamFreed: 'Memory freed: LLM models unloaded, agent sessions closed, ComfyUI VRAM emptied.',
+    msgErr: 'Error: {0}', errPrefix: 'Error: ',
+    shutdownConfirm: 'Confirm shutdown?',
+    shutdownDone1: 'Everything stopped.', shutdownDone2: 'Prompt Studio, LLM and ComfyUI have been shut down. You can close this page.',
+    shutdownDone3: 'To restart, use the "Prompt Studio" icon on the desktop.',
+    nameChar: 'Give the character a name.', errName: 'Give the character a name',
+    missRefImg: 'Tab "{0}" is missing the workflow sample image: upload it in the slot below the Workflow dropdown.',
+    fillOneSetting: 'Fill in the setting of at least one tab.',
+    photoAsFrame: 'Photo set as the video frame.', imgFormatInvalid: 'Invalid format: use PNG, JPG or WEBP.',
+    imgUploadErr: 'Image upload error: {0}',
+    photoNotFound: 'photo not found', notAPhoto: 'not a photo',
+    dateInvalid: 'Invalid date/time', timeInPast: 'The time is in the past',
+    noPrompt: 'No prompt', lastPhotoDeleted: 'Last photo deleted: the job was removed too.',
+    videoNotReady: 'The video engine is not ready yet: finish the download in the "Models" window (Video section). The workflow will appear on its own once installed.',
+    photoHookedFrame: 'Photo hooked as the first frame — describe the motion in the setting and press Create.',
+    regenReinserted: 'Prompt reinserted in a new job: review it (you can edit it) and press "Start now".',
+    regenModPrompt: 'What change do you want to apply to the prompt?\n(e.g. full body, close-up, standing, from behind…)',
+    noChange: 'No change specified.',
+    regenModStarted: 'New job started: {0} variants with «{1}». The prompt is revised and creation starts on its own.',
+    loadedToTab: 'Photo values loaded into a new tab (literal prompt + tags + settings). Edit and generate.',
+    scoreFailed: 'evaluation failed', scoreTipNa: 'evaluation failed', scoreTip: 'AI score: prompt fidelity + quality',
+    voteLine: 'Score {0}/10 — {1}',
+    mpWarn: ' — over ~2.3 MP: risk of duplicated bodies/faces and more VRAM/time. Better to generate smaller and upscale afterwards.',
+    badgePhoto: 'PHOTO', badgeVideo: 'VIDEO', nameWf: 'Give the workflow a name', delCharT: 'delete character',
+    tpsStreaming: 'LLM: {0} token/s now', tpsLast: 'last: {0} token/s', inMemory: 'in memory: {0}',
+    styleActiveHint: '{0} — click to deactivate',
+  },
+  it: {
+    htmlLang: 'it', locale: 'it-IT',
+    hdrSub: 'schede › prompt LLM › foto',
+    btnModels: 'Modelli', btnModelsT: 'scarica o gestisci i modelli AI',
+    btnUnload: 'Scarica RAM', btnUnloadT: 'scarica tutti i modelli LLM dalla RAM/VRAM e libera la memoria di ComfyUI',
+    btnShutdown: 'Arresta', btnShutdownT: 'arresta Prompt Studio, LLM e ComfyUI (come Arresta_Prompt_Studio.bat)',
+    btnAgent: 'Agente workflow',
+    langToggleT: 'Lingua / Language',
+    modePhoto: 'Foto', modeVideo: 'Video',
+    vRegista: 'Regista', vRegistaT: "Dai la foto iniziale (e se vuoi foto finale + bozza di regia): l'app armonizza i prompt, crea le due foto e il video.",
+    vStart: 'Foto + testo', vStartT: 'Carichi la foto di partenza e descrivi il movimento: il video parte da lì.',
+    vBoth: 'Due foto', vBothT: 'Carichi foto di inizio E di fine (già pronte): il video le collega.',
+    tabName: 'Nome scheda', tabNamePh: 'es. Spiaggia tramonto',
+    imodel: 'Modello foto',
+    maxwords: 'Lungh. prompt', maxwordsT: 'Lunghezza indicativa dei prompt: una parola in più o in meno non cambia nulla',
+    ambLabelPhoto: 'Ambientazione / scenario — [tra parentesi quadre] ciò che DEVE apparire in ogni foto',
+    ambPhPhoto: "Es.: al tramonto su una spiaggia mediterranea, indossa un [bikini rosso], [cocktail in mano]... — le [parentesi quadre] rendono l'elemento obbligatorio in ogni foto",
+    ambLabelRegista: 'Foto iniziale — la scena di partenza del video (il regista la rifinisce)',
+    ambPhRegista: "Es.: una donna nella vasca da bagno, immersa nell'acqua, guarda l'obbiettivo con una papera di plastica in mano",
+    ambLabelMotion: 'Movimento del video — testo letterale (inglese semplice e concreto)',
+    ambPhMotion: 'Es.: The woman slowly turns toward the camera and smiles, her hair moving gently in the breeze',
+    vendLabel: "Foto finale — come si conclude l'inquadratura (vuoto: la inventa il regista)",
+    vendPh: 'Es.: guarda la papera che ora galleggia in acqua alla sua sinistra, busto leggermente ruotato',
+    vplotLabel: 'Bozza di regia — la traccia del movimento tra le due foto (vuoto: la scrive il regista)',
+    vplotPh: 'Es.: posa la papera in acqua alla sua sinistra e la segue con lo sguardo',
+    styleLabel: 'Stile fotografico forzato (opzionale — apri i gruppi, passa sopra col mouse per i dettagli)',
+    personaLabel: 'Persona — configura il personaggio: la descrizione è garantita in ogni foto',
+    personaOn: 'Attiva', personaPresetPh: '— preset bellezza —', charselPh: '— personaggi salvati —',
+    charnamePh: 'nome personaggio', charSave: 'Salva', charDel: 'Elimina',
+    personaPickAbove: 'scegli le opzioni qui sopra',
+    soggetto: 'Soggetto / trigger LoRA', soggettoPh: 'es. anna, a woman...',
+    wfselPhoto: 'Workflow (opzionale)', wfselVideo: 'Workflow video', wfselNonePh: '— nessuno —',
+    wfNoneUseModel: '— nessuno: usa il modello qui sopra —',
+    vsecs: 'Durata video (sec)',
+    fps: 'FPS', fpsT: "12/15 fps: genera meta' dei frame (piu' veloce), poi un interpolatore esterno (es. Topaz) ricostruisce i frame mancanti",
+    pstepsLabel: 'Steps foto', pstepsT: 'Step di Klein per le due foto del regista (separati dagli step del video)',
+    crfLabel: 'CRF rif.', crfT: 'Compressione del frame di riferimento (0-51): più BASSO = riferimento più nitido = partenza del video più nitida. Consigliato: 12.',
+    speedLabel: 'Velocità', speedT: 'Velocità del movimento: 1× = naturale, >1× = movimenti più rapidi (contro l’effetto rallentatore). Agisce sul conditioning del modello; i FPS di riproduzione non cambiano.',
+    easing: 'Easing sigma', easingT: "Curva di denoise con easing cubico: ritmo più 'cinematografico', transizioni più morbide, meno sfarfallio. Costo: zero. Consigliato: attivo.",
+    detailer: 'Detailer HQ', detailerT: "Seconda passata leggera alla stessa risoluzione: aggiunge micro-dettaglio vero a pelle, capelli e stoffe e rende nitido l'ultimo frame. Costo misurato: +16% di tempo. Consigliato per i render finali.",
+    vclean: 'Pulizia aree piatte', vcleanT: "Sperimentale: crea una COPIA _pulito.mp4 con le gocce del VAE attenuate sulle aree piatte. L'originale resta intatto. Per risultati migliori usa la rimozione polvere/rumore di Topaz.",
+    extra: 'Istruzioni extra', extraPh: 'es. figura intera, luce naturale...',
+    numPhoto: 'Foto', numVideo: 'Video',
+    size: 'Formato', sizeCustom: 'Personalizzato…',
+    steps: 'Steps', stepsVideo: 'Steps video',
+    customRes: 'Risoluzione personalizzata (px, passo 16)',
+    seed: 'Seed (vuoto = caso)', seedPh: 'casuale',
+    dest: 'Cartella di destinazione',
+    lora: 'LoRA', loraNone: 'Nessuna LoRA in models/loras', loraStrengthT: 'forza',
+    presetsLabel: 'Personaggi salvati', presetsEmpty: 'Nessuno: salva una foto riuscita con il segnalibro.',
+    llmLabel: 'Modello LLM',
+    literal: 'Prompt letterali', literalT: 'Segue il testo alla lettera, senza ammorbidire né interpretare.',
+    pstory: 'Regista foto (storia)', pstoryT: 'Le N foto diventano i capitoli di una storia cronologica: eventi consecutivi, orari, luce e meteo che evolvono, soggetto e outfit identici in ogni foto. Il numero di capitoli è il numero di foto richieste.',
+    anatomy: 'Anatomia corretta', anatomyT: 'Aggiunge a ogni foto la richiesta di corpi, mani e pose corretti (positivo per tutti; nel negativo, per i modelli che lo usano, vieta deformità e dita/arti extra o mancanti).',
+    tagmode: 'Prompt a parole chiave (tag)', tagmodeT: "Invece di frasi descrittive, l'LLM scrive solo parole/tag separati da virgola (es. stanza, ragazza, vestito rosso, luce calda). Utile se il modello si perde con prompt lunghi.",
+    autolaunch: 'Avvia subito', autolaunchT: 'Appena i prompt sono pronti parte la creazione, senza fermarsi per la revisione.',
+    evalon: 'Valuta le foto con l’IA (voto 1–10)', evalonT: 'Dopo la generazione, Qwen (visione) dà a ogni foto un voto 1–10 su fedeltà al prompt e qualità (anatomia, fisica, mani, volti). Poi puoi filtrare le foto per voto.',
+    evalEvery: 'ogni', evalEveryPhotos: 'foto (0=fine)', evalEveryT: '0 = valuta tutto alla fine del batch. Un numero N = valuta ogni N foto durante la generazione.',
+    evaldeep: 'Valutazione approfondita (contraddittorio, più affidabile)', evaldeepT: "Valutazione multipla e in contraddittorio: dopo il primo voto, Qwen prova a smentire sé stesso (i difetti dell'acqua/tagli sono spesso falsi). Se si contraddice, rivaluta. Più lenta ma più affidabile. Tutti i passaggi finiscono nel log.",
+    evalcritLabel: 'Criteri di valutazione (opzionale)', evalcritT: 'Criteri TUOI su cui il giudice deve basare il voto (in aggiunta ai controlli tecnici di anatomia/scena, che restano sempre). Vuoto = valuta come sempre.',
+    evalcritPh: 'Es.: premia se il vestito è davvero rosso e la posa è elegante; penalizza se ci sono più di una persona o se lo sguardo non è in camera',
+    goBtn: 'Genera i prompt di tutte le schede',
+    goHint: "L'LLM si carica una volta sola e crea i prompt di ogni scheda; poi rivedi i prompt e avvii la creazione subito o la programmi a un orario.",
+    splitterT: 'trascina per ridimensionare', apResizeT: 'trascina per allargare',
+    scoreShow: 'Mostra foto con voto', scoreAll: 'tutte',
+    jobsEmpty: 'Nessun job ancora. Aggiungi schede, scrivi le ambientazioni e genera i prompt.',
+    sbToggleT: 'mostra/nascondi statistiche', statsWord: 'statistiche',
+    mvLoadedT: 'modelli LLM montati in memoria',
+    apHead: 'Agente workflow', chatSmallerT: 'riduci caratteri chat', chatBiggerT: 'ingrandisci caratteri chat', close: 'Chiudi',
+    agentWelcome: 'Scegli il modello di destinazione e descrivi il workflow che vuoi (es. "workflow con immagine di riferimento e negative personalizzato"). L’agente lo costruisce, lo testa su ComfyUI e itera finché non funziona. Puoi anche fargli domande.',
+    apNamePh: 'nome del workflow...', saveWf: 'Salva workflow',
+    apMsgPh: 'Descrivi il workflow o chiedi una modifica...', send: 'Invia',
+    lbPrevT: 'foto precedente (freccia sinistra)', lbNextT: 'foto successiva (freccia destra)',
+    lbFolderT: 'apri la cartella con questa foto selezionata', lbDelT: 'elimina questa foto', lbCloseT: 'chiudi (Esc)',
+    modelsTitle: 'Componenti e modelli AI',
+    modelsHint: 'I file finiscono da soli nella cartella giusta. I download si possono interrompere e riprendere. Puoi chiudere questa finestra: gli scaricamenti proseguono da soli.',
+    saveCharTitle: 'Salva personaggio', dlgNamePh: 'nome del personaggio...', cancel: 'Annulla', save: 'Salva',
+    addTab: 'Aggiungi scheda', tabDefault: 'Scheda {0}', removeT: 'rimuovi',
+    ph_queued: 'In coda', ph_llm_loading: 'Carico LLM…', ph_prompting: 'Creo i prompt…',
+    ph_prompts_ready: 'Prompt pronti — rivedi e avvia', ph_scheduled: 'Programmato',
+    ph_generating: 'Genero le foto…', ph_evaluating: 'Analisi qualità…',
+    ph_done: 'Completato', ph_error: 'Errore', ph_cancelled: 'Annullato',
+    genVideoPhase: 'Genero il video…',
+    nounPhoto: 'foto', nounVideo: 'video', nounClip: 'clip', nounPhotos: 'foto',
+    materialize: '// materializzo {0}/{1} {2}', remainWord: 'residuo {0}',
+    analyzePhase: '// fase di analisi · valuto foto {0}/{1} — puoi annullare',
+    missingWord: 'manca {0}', minsLeft: 'mancano {0}',
+    cancelBtn: 'Annulla', removeBtn: 'Rimuovi',
+    startNow: 'Avvia adesso', orWord: 'oppure', schedule: 'Programma', scheduledAt: 'programmato: {0}',
+    saveChanges: 'Salva modifiche', onePromptPerLine: 'un prompt per riga — puoi modificare, cancellare o aggiungere righe',
+    promptsN: 'Prompt ({0})', photoN: 'Foto {0}', scoreWord: 'voto', seedWord: 'seed',
+    effectivePositive: '→ POSITIVO effettivo inviato al modello (con anatomia/stili/forzati):',
+    controlLog: 'Registro dei controlli (Log)', openFolderT: 'apri cartella',
+    preparing: '{0} {1}: preparo…', stepOf: 'step {0}/{1}', materializeShort: 'materializzo',
+    errWord: 'errore', pendingN: '+{0} in attesa',
+    renderT: 'render {0}', renderTotalT: '{0} · totale con caricamenti {1}',
+    dragToFrameT: 'trascina in Primo/Ultimo frame', delPhotoT: 'elimina foto',
+    saveAsCharT: 'salva come personaggio (seed + impostazioni)',
+    chipStep: 'step', chipSeed: 'seed', chipSeedRandom: 'casuale', chipMode: 'modo',
+    chipDuration: 'durata', chipFps: 'fps', chipSpeed: 'velocità', chipCRF: 'CRF',
+    chipEasing: 'easing', chipDetailer: 'detailer HQ', chipPhotoSteps: 'step foto',
+    chipLiteral: 'letterale', chipTag: 'tag', chipAnatomy: 'anatomia', chipWords: '~parole',
+    chipLoRA: 'LoRA', chipStyles: 'stili', chipPersona: 'persona', chipConfigured: 'configurata', chipSubject: 'soggetto',
+    cfgRegista: 'Regista', cfgBoth: 'Due foto', cfgStart: 'Foto + testo',
+    registaOnMsg: 'Modalità regista attiva: le foto di inizio e fine le genero io dai tuoi prompt (il revisore armonizza inizio e fine, il regista scrive il movimento sulla tua bozza, tempi calibrati sulla durata).',
+    firstFrame: 'Primo frame (inizio)', lastFrame: 'Ultimo frame (fine)',
+    sampleImageN: 'Immagine campione {0}', sampleImage: 'Immagine campione',
+    loaded: 'caricata', missing: 'manca', removeImgT: 'rimuovi immagine',
+    dropHere: "Trascina qui l'immagine o clicca per sceglierla",
+    vinfoRegista: 'foto e video con lo stesso seed', vinfoBoth: 'dal frame di inizio a quello di fine',
+    vinfoStart: 'parte dalla foto caricata', vinfoFrames: '≈ {0} frame — {1}',
+    grpBaseTitle: 'Motori (obbligatori)', grpBaseSub: 'Il cuore del programma: senza questi non parte niente.',
+    grpImageTitle: 'Modello immagini (almeno uno)', grpImageSub: 'È chi disegna le foto. Klein è il consigliato per iniziare.',
+    grpTextTitle: 'Scrittore dei prompt', grpTextSub: 'Il modello di testo che trasforma le tue frasi in prompt.',
+    grpVideoTitle: 'Video (LTX 2.3)', grpVideoSub: 'Motore image-to-video: anima le tue foto. Opzionale, ~53 GB in tutto.',
+    grpOptTitle: 'Opzionale', grpOptSub: 'Extra non necessari per creare foto.',
+    setupAllReady: 'Tutto pronto per creare foto. Qui puoi aggiungere altri modelli quando vuoi.',
+    setupDownloading: "Sto scaricando l'occorrente per iniziare… lascia la finestra aperta o chiudila pure, continua da solo. Mancano {0} componenti.",
+    setupNeed: 'Per creare le tue prime foto servono 4 cose, in ordine: il motore immagini, il motore testo, un modello che disegna e il modello che scrive i prompt. Posso scaricarle tutte io:',
+    downloadAll: 'Scarica tutto il necessario per iniziare', orPickBelow: 'oppure scegli sotto voce per voce',
+    installed: 'installato', downloadBtn: 'Scarica', cancelDl: 'Annulla',
+    fileProg: 'file {0}/{1}: {2} — {3} / {4} ({5}%) · {6} {7}',
+    dlError: 'errore: {0} — riprova (riprende da dove si era fermato)',
+    recommended: 'consigliato', toDownload: ' — da scaricare',
+    missRuntime: 'motore immagini', missTextEngine: 'motore testo', missImage: 'un modello immagini', missWriter: 'scrittore dei prompt',
+    stillMissing: 'Per creare foto manca ancora:', openGuideDl: 'Apri la guida e scarica →',
+    agentLoading: 'caricamento agente in RAM ({0})...', agentFast: ' · veloce (VRAM)', agentSafe: ' · in RAM',
+    agentReady: 'agente pronto — {0}{1}', agentLoadErr: 'errore caricamento agente: {0}',
+    agQueued: 'in coda', agLoading: 'carico il modello agente', agWorking: 'sto lavorando', agTesting: 'test su ComfyUI',
+    agIteration: 'iterazione {0}', agTokS: '{0} token/s', agStepP: 'step {0}/{1}', stop: 'Stop',
+    wfSaved: 'Workflow salvato: ora lo trovi in "Modello foto" come "WF: {0}".',
+    ctxRegen1: 'Rigenera 1 foto da questo prompt', ctxRegen4: 'Rigenera 4 varianti (nuovi seed)',
+    ctxRegenMod: 'Rigenera 4 varianti con modifica…', ctxLoadEditor: "Carica i valori di questa foto nell'editor",
+    ctxAnimate: 'Anima questa foto (video)',
+    msgRamFreed: 'Memoria liberata: modelli LLM scaricati, sessioni agente chiuse, VRAM di ComfyUI svuotata.',
+    msgErr: 'Errore: {0}', errPrefix: 'Errore: ',
+    shutdownConfirm: "Confermi l'arresto?",
+    shutdownDone1: 'Tutto arrestato.', shutdownDone2: 'Prompt Studio, LLM e ComfyUI sono stati spenti. Puoi chiudere questa pagina.',
+    shutdownDone3: 'Per ripartire usa l’icona "Prompt Studio" sul desktop.',
+    nameChar: 'Dai un nome al personaggio.', errName: 'Dai un nome al personaggio',
+    missRefImg: 'Nella scheda "{0}" manca l’immagine campione del workflow: caricala nello slot sotto la tendina Workflow.',
+    fillOneSetting: "Compila l'ambientazione di almeno una scheda.",
+    photoAsFrame: 'Foto impostata come frame del video.', imgFormatInvalid: 'Formato non valido: usa PNG, JPG o WEBP.',
+    imgUploadErr: 'Errore caricamento immagine: {0}',
+    photoNotFound: 'foto non trovata', notAPhoto: 'non è una foto',
+    dateInvalid: 'Data/ora non valida', timeInPast: "L'orario è nel passato",
+    noPrompt: 'Nessun prompt', lastPhotoDeleted: 'Ultima foto eliminata: rimosso anche il job.',
+    videoNotReady: 'Il motore video non è ancora pronto: completa il download nella finestra "Modelli" (sezione Video). Il workflow apparirà da solo appena installato.',
+    photoHookedFrame: "Foto agganciata come primo frame — descrivi il movimento nell'ambientazione e premi Crea.",
+    regenReinserted: 'Prompt reinserito in un nuovo job: rivedilo (puoi modificarlo) e premi "Avvia adesso".',
+    regenModPrompt: 'Che modifica vuoi applicare al prompt?\n(es. corpo intero, primo piano, in piedi, di spalle…)',
+    noChange: 'Nessuna modifica indicata.',
+    regenModStarted: 'Nuovo job avviato: {0} varianti con «{1}». Il prompt viene rivisto e la creazione parte da sola.',
+    loadedToTab: 'Valori della foto caricati in una nuova scheda (prompt letterale + tag + impostazioni). Modifica e genera.',
+    scoreFailed: 'valutazione non riuscita', scoreTipNa: 'valutazione non riuscita', scoreTip: 'voto IA: fedeltà al prompt + qualità',
+    voteLine: 'Voto {0}/10 — {1}',
+    mpWarn: ' — oltre ~2.3 MP: rischio corpi/volti duplicati e più VRAM/tempo. Meglio generare più piccolo e ingrandire dopo.',
+    badgePhoto: 'FOTO', badgeVideo: 'VIDEO', nameWf: 'Dai un nome al workflow', delCharT: 'elimina personaggio',
+    tpsStreaming: 'LLM: {0} token/s ora', tpsLast: 'ultimi: {0} token/s', inMemory: 'in memoria: {0}',
+    styleActiveHint: '{0} — clicca per disattivare',
+  }
+};
+let LANG = (function(){ try{ return localStorage.getItem('ps_lang') || 'en'; }catch(e){ return 'en'; } })();
+// NB: la funzione di traduzione si chiama tr() (NON t): nel codice `t` è ovunque la variabile "tab".
+function tr(k){
+  let s = (I18N[LANG] && I18N[LANG][k]);
+  if(s == null) s = I18N.en[k];
+  if(s == null) return k;
+  if(arguments.length > 1)
+    s = s.replace(/\{(\d+)\}/g, (m, i) => { const v = arguments[+i + 1]; return v == null ? '' : v; });
+  return s;
+}
+function applyStaticI18n(){
+  document.documentElement.lang = tr('htmlLang');
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = tr(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = tr(el.dataset.i18nTitle); });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = tr(el.dataset.i18nPh); });
+  document.querySelectorAll('[data-i18n-html]').forEach(el => { el.innerHTML = tr(el.dataset.i18nHtml); });
+}
+function updateLangToggle(){
+  const b = $('langtoggle');
+  if(b) b.textContent = LANG === 'en' ? 'IT' : 'EN';
+}
+function setLang(l){
+  LANG = (l === 'it') ? 'it' : 'en';
+  try{ localStorage.setItem('ps_lang', LANG); }catch(e){}
+  applyStaticI18n();
+  updateLangToggle();
+  // ridisegna le parti dinamiche nella nuova lingua
+  try{ renderForm(); }catch(e){}
+  try{ updateStatsbarToggle(); }catch(e){}
+  try{ loadPresets(); }catch(e){}
+  for(const k in renderCache) delete renderCache[k];   // forza il ridisegno delle card job
+  try{ refreshJobs(); }catch(e){}
+  // pannello agente aperto: aggiorna il messaggio di benvenuto se non c'è una sessione
+  if($('agentpanel') && $('agentpanel').classList.contains('open') && !AGENT_ID)
+    $('ap-chat').innerHTML = AGENT_WELCOME_HTML();
+}
+function toggleLang(){ setLang(LANG === 'en' ? 'it' : 'en'); }
+// ==================== fine i18n ====================
+
+let LORAS = [], DEFAULT_DEST = '', IMODELS = [], STYLES = [];
+let tabs = [], activeTab = 0;
+const renderCache = {};    // job id -> chiave ultimo render
+const collapseState = {};  // job id -> true = chiuso (default: chiuso se gia' finito al primo render)
+const detailsOpen = new Set();  // pannelli <details> aperti (Prompt/Log): sopravvivono ai refresh
+
+const ICONS = {
+  trash: '<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>',
+  x: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+  folder: '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>',
+  play: '<polygon points="5 3 19 12 5 21 5 3"/>',
+  clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+  save: '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>',
+  chevD: '<polyline points="6 9 12 15 18 9"/>',
+  chevR: '<polyline points="9 18 15 12 9 6"/>',
+  chevL: '<polyline points="15 18 9 12 15 6"/>',
+  alert: '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+  plus: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
+  bookmark: '<path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>',
+  star: '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',
+  film: '<rect x="2" y="2" width="20" height="20" rx="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/>',
+  flag: '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/>',
+  check: '<polyline points="20 6 9 17 4 12"/>',
+  camera: '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>',
+};
+function ico(name, size){
+  size = size || 13;
+  return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]}</svg>`;
+}
+
+// ---------------- valutazione IA: badge voto + filtro ----------------
+let scoreFilter = 0;   // 0 = mostra tutte
+function scoreClass(s){ return s == null ? '' : (s === 0 ? 's-na' : (s >= 8 ? 's-hi' : (s >= 6 ? 's-mid' : 's-lo'))); }
+function scoreBadge(s, big){
+  if(s == null) return '';
+  const txt = s === 0 ? '?' : s + '/10';
+  const tip = s === 0 ? tr('scoreTipNa') : tr('scoreTip');
+  return `<span class="score ${scoreClass(s)}${big ? ' lb' : ''}" title="${tip}">${ico('star', big ? 15 : 12)}${txt}</span>`;
+}
+// nascosta dal filtro? (le foto non ancora valutate restano visibili)
+function scoreHidden(s){ return scoreFilter > 0 && s != null && s < scoreFilter; }
+
+function showErr(msg, ok){
+  const t = $('toast');
+  t.innerHTML = (ok ? '' : ico('alert') + ' ') + String(msg).replace(/</g,'&lt;');
+  t.style.background = ok ? '#194d38' : '#5c2222';
+  t.style.borderColor = ok ? 'var(--ok)' : 'var(--err)';
+  t.style.color = ok ? '#9df0c8' : '#ffd7d7';
+  t.style.display = 'flex';
+  clearTimeout(t._h);
+  t._h = setTimeout(() => t.style.display = 'none', 6000);
+}
+const showOk = msg => showErr(msg, true);
+
+async function unloadRam(){
+  const b = $('btn-unload');
+  b.disabled = true;
+  try{
+    await api('/api/unload', {});
+    AG_READY = false;
+    resetAgentUI(false);   // le sessioni agente sono state chiuse dal server
+    showOk(tr('msgRamFreed'));
+  }catch(e){ showErr(tr('errPrefix') + e.message); }
+  b.disabled = false;
+}
+
+let shutdownArmed = null;
+async function shutdownAll(){
+  const b = $('btn-shutdown');
+  if(!shutdownArmed){
+    b._orig = b._orig || b.innerHTML;
+    b.innerHTML = tr('shutdownConfirm');
+    b.style.color = 'var(--err)';
+    b.style.borderColor = 'var(--err)';
+    shutdownArmed = setTimeout(() => {
+      shutdownArmed = null;
+      b.innerHTML = b._orig;
+      b.style.color = ''; b.style.borderColor = '';
+    }, 4000);
+    return;
+  }
+  clearTimeout(shutdownArmed);
+  try{ await api('/api/shutdown', {}); }catch(e){}
+  document.body.innerHTML = '<div style="display:flex;height:100vh;align-items:center;justify-content:center;' +
+    'flex-direction:column;gap:12px;color:#8b96a8;font-size:17px"><b style="color:#e6ebf2">' + tr('shutdownDone1') + '</b>' +
+    tr('shutdownDone2') + '<br>' + tr('shutdownDone3') + '</div>';
+}
+
+async function api(path, body){
+  const r = await fetch(path, body ? {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)} : undefined);
+  const j = await r.json();
+  if(!r.ok) throw new Error(j.error || r.status);
+  return j;
+}
+
+function newTab(){
+  return {title:'', ambientazione:'', soggetto:'', extra:'', num:6, size:'832x1216',
+          steps:6, dest:DEFAULT_DEST, loras:{}, imodel:'klein', literal:false, seed:'', styles:[], refs:{},
+          maxwords:55, tagmode:false, anatomy:true, evalon:false, evalevery:0, evaldeep:false};
+}
+
+function saveTabs(){ localStorage.setItem('ps_tabs', JSON.stringify(tabs)); }
+
+function loadTabs(){
+  try{ tabs = JSON.parse(localStorage.getItem('ps_tabs')) || []; }catch(e){ tabs = []; }
+  if(!tabs.length) tabs = [newTab()];
+  activeTab = Math.min(activeTab, tabs.length - 1);
+}
+
+function tabLabel(t, i){
+  return t.title || (t.ambientazione ? t.ambientazione.slice(0, 18) + '…' : tr('tabDefault', i + 1));
+}
+
+function renderTabbar(){
+  const bar = $('tabbar');
+  bar.innerHTML = '';
+  tabs.forEach((t, i) => {
+    const b = document.createElement('div');
+    b.className = 'tabbtn' + (i === activeTab ? ' active' : '');
+    b.innerHTML = `<span class="tname">${tabLabel(t, i)}</span>` +
+                  (tabs.length > 1 ? `<span class="x" title="${tr('removeT')}">${ico('x', 11)}</span>` : '');
+    b.querySelector('.tname').onclick = () => { commitForm(); activeTab = i; renderForm(); };
+    b.onclick = e => { if(e.target === b){ commitForm(); activeTab = i; renderForm(); } };
+    const x = b.querySelector('.x');
+    if(x) x.onclick = e => { e.stopPropagation(); commitForm(); tabs.splice(i, 1);
+      if(activeTab >= tabs.length) activeTab = tabs.length - 1; saveTabs(); renderForm(); };
+    bar.appendChild(b);
+  });
+  const add = document.createElement('div');
+  add.className = 'tabbtn add';
+  add.innerHTML = ico('plus', 12) + ' ' + tr('addTab');
+  add.onclick = () => { commitForm(); tabs.push(newTab()); activeTab = tabs.length - 1; saveTabs(); renderForm(); };
+  bar.appendChild(add);
+}
+
+function renderForm(){
+  renderTabbar();
+  const t = tabs[activeTab];
+  $('title').value = t.title; $('amb').value = t.ambientazione;
+  $('vend').value = t.vend || ''; $('vplot').value = t.vplot || '';
+  $('soggetto').value = t.soggetto; $('extra').value = t.extra;
+  $('num').value = t.num; $('steps').value = t.steps;
+  // formato: se corrisponde a un preset lo seleziona, altrimenti "Personalizzato" coi campi liberi
+  const presets = [...$('size').options].map(o => o.value);
+  if(presets.includes(t.size)){
+    $('size').value = t.size;
+  }else{
+    $('size').value = 'custom';
+    const [cw, ch] = (t.size || '1024x1536').split('x').map(Number);
+    $('cw').value = cw || 1024; $('ch').value = ch || 1536;
+  }
+  syncCustomSize();
+  $('maxwords').value = t.maxwords || 55;
+  $('dest').value = t.dest || DEFAULT_DEST;
+  if(IMODELS.length){
+    const isWf = (t.imodel || '').startsWith('wf:');
+    $('wfsel').value = isWf ? t.imodel : '';
+    $('imodel').value = isWf ? 'klein' : (t.imodel || 'klein');
+    $('imodel').disabled = isWf;
+  }
+  refOpen = {};
+  applyMode();   // FOTO/VIDEO + sotto-modalita': visibilita', workflow, etichette, ref slots
+  $('literal').checked = !!t.literal;
+  $('pstory').checked = !!t.pstory;
+  syncPersonaUI(t);
+  $('tagmode').checked = !!t.tagmode;
+  $('anatomy').checked = t.anatomy !== false;
+  $('evalon').checked = !!t.evalon;
+  $('evalevery').value = t.evalevery || 0;
+  $('evaldeep').checked = !!t.evaldeep;
+  $('evalcriteria').value = t.evalcriteria || '';
+  $('evaldeep-row').style.display = t.evalon ? 'flex' : 'none';
+  $('evalcrit-row').style.display = t.evalon ? '' : 'none';
+  $('seed').value = t.seed || '';
+  renderStyleUI();
+  const ld = $('loras');
+  ld.innerHTML = LORAS.length ? '' : '<div class="job-sub">' + tr('loraNone') + '</div>';
+  for(const name of LORAS){
+    const sel = t.loras[name];
+    const div = document.createElement('div');
+    div.className = 'lora-item';
+    div.innerHTML = `<input type="checkbox" data-lora="${name}" ${sel ? 'checked' : ''}>
+      <span class="name" title="${name}">${name}</span>
+      <input type="number" step="0.05" min="0" max="2" value="${sel ? sel : 1.0}" title="${tr('loraStrengthT')}">`;
+    ld.appendChild(div);
+  }
+}
+
+// ---------------- FOTO | VIDEO: campi di lavoro indipendenti per modalita' ----------------
+// Ogni scheda ha un "cassetto" per modalita': prompt, seed, formato, steps, letterale e
+// numero foto NON si sovrascrivono passando da Foto a Video e viceversa.
+const MODE_FIELDS = ['ambientazione', 'seed', 'size', 'steps', 'literal', 'num'];
+
+function stashModeCfg(t){
+  const key = (t.cmode === 'video') ? 'vcfg' : 'pcfg';
+  t[key] = {};
+  for(const f of MODE_FIELDS) t[key][f] = t[f];
+}
+
+function popModeCfg(t){
+  const key = (t.cmode === 'video') ? 'vcfg' : 'pcfg';
+  const c = t[key];
+  if(c){
+    for(const f of MODE_FIELDS) if(f in c) t[f] = c[f];
+  } else if(t.cmode === 'video'){
+    // primo ingresso in VIDEO: prompt suo (vuoto), default video sensati
+    t.ambientazione = ''; t.seed = ''; t.num = 1; t.steps = 8;
+    t.literal = (t.vmode || 'regista') !== 'regista';
+  }
+  // primo ingresso in FOTO (scheda nata cosi'): tiene i valori correnti
+}
+
+// ---------------- configuratore PERSONA ----------------
+let PERSONA_OPTS = [], PERSONA_PRESETS = [], CHARACTERS = {};
+
+function personaDesc(sel){
+  // anteprima client della descrizione (il server compone la versione definitiva allo stesso modo)
+  if(!sel) return '';
+  const byKey = Object.fromEntries(PERSONA_OPTS.map(s => [s.key, s]));
+  const frag = k => { const s = byKey[k]; const o = s && s.options.find(o => o.key === sel[k]); return o ? o.frag : ''; };
+  const head = ['bellezza','eta'].map(frag).filter(Boolean).join(' ');
+  const hair = ['capellilunghezza','capellitipo','capellicolore'].map(k => frag(k).replace(' hair','')).filter(Boolean);
+  const rest = PERSONA_OPTS.map(s => s.key)
+    .filter(k => !['bellezza','eta','capellilunghezza','capellitipo','capellicolore'].includes(k))
+    .map(frag).filter(Boolean);
+  if(hair.length) rest.unshift(hair.join(' ') + ' hair');
+  if(!head && !rest.length) return '';
+  return 'a ' + (head ? head + ' ' : '') + 'woman' + (rest.length ? ', ' + rest.join(', ') : '');
+}
+
+function buildPersonaUI(){
+  const grid = $('personagrid');
+  grid.innerHTML = '';
+  for(const s of PERSONA_OPTS){
+    const d = document.createElement('div');
+    d.innerHTML = `<label style="font-size:11px">${s.label}</label>
+      <select data-psec="${s.key}" style="width:100%"><option value="">—</option>
+      ${s.options.map(o => `<option value="${o.key}">${o.label}</option>`).join('')}</select>`;
+    d.querySelector('select').onchange = e => {
+      const t = tabs[activeTab]; if(!t) return;
+      if(!t.persona) t.persona = {};
+      if(e.target.value) t.persona[s.key] = e.target.value; else delete t.persona[s.key];
+      saveTabs(); syncPersonaUI(t);
+    };
+    grid.appendChild(d);
+  }
+  const ps = $('personapreset');
+  ps.innerHTML = '<option value="">' + tr('personaPresetPh') + '</option>' +
+    PERSONA_PRESETS.map(p => `<option value="${p.key}">${p.label}</option>`).join('');
+  ps.onchange = () => {
+    const t = tabs[activeTab], p = PERSONA_PRESETS.find(x => x.key === ps.value);
+    if(!t || !p) return;
+    t.persona = Object.assign({}, t.persona || {}, p.sel);
+    t.personaon = true; $('personaon').checked = true;
+    ps.value = ''; saveTabs(); syncPersonaUI(t);
+  };
+  fillCharSel();
+  $('personaon').onchange = () => {
+    const t = tabs[activeTab]; if(!t) return;
+    t.personaon = $('personaon').checked; saveTabs(); syncPersonaUI(t);
+  };
+  $('charsave').onclick = async () => {
+    const t = tabs[activeTab]; if(!t) return;
+    const name = ($('charname').value || $('charsel').value || '').trim();
+    if(!name){ showErr(tr('nameChar')); return; }
+    try{
+      const r = await api('/api/characters/save', {name, persona: t.persona || {}});
+      CHARACTERS = r.characters; fillCharSel(); $('charsel').value = name; $('charname').value = '';
+    }catch(e){ showErr(tr('errPrefix') + e.message); }
+  };
+  $('chardel').onclick = async () => {
+    const name = $('charsel').value;
+    if(!name) return;
+    try{
+      const r = await api('/api/characters/delete', {name});
+      CHARACTERS = r.characters; fillCharSel();
+    }catch(e){ showErr(tr('errPrefix') + e.message); }
+  };
+  $('charsel').onchange = () => {
+    const t = tabs[activeTab], name = $('charsel').value;
+    if(!t || !name || !CHARACTERS[name]) return;
+    t.persona = Object.assign({}, CHARACTERS[name]);
+    t.personaon = true; $('personaon').checked = true;
+    saveTabs(); syncPersonaUI(t);
+  };
+}
+
+function fillCharSel(){
+  $('charsel').innerHTML = '<option value="">' + tr('charselPh') + '</option>' +
+    Object.keys(CHARACTERS).sort().map(n => `<option value="${n}">${n}</option>`).join('');
+}
+
+function syncPersonaUI(t){
+  if(!t) return;
+  const on = !!t.personaon;
+  $('personaon').checked = on;
+  $('personagrid').style.display = on ? 'grid' : 'none';
+  document.querySelectorAll('#personagrid select[data-psec]').forEach(s => {
+    s.value = (t.persona && t.persona[s.dataset.psec]) || '';
+  });
+  const d = on ? personaDesc(t.persona) : '';
+  $('personapreview').textContent = d ? ('→ ' + d) : (on ? tr('personaPickAbove') : '');
+}
+
+// ---------------- chip stile: attivi sopra + gruppi affiancati (accordion) ----------------
+const CHIP_GROUP_ORDER = ['Realismo','Corpo','Nudità','Inquadratura','Posa','Espressione','Luce','Meteo',
+                          'Colore','Stile','Pellicola','Epoca','Focale','Diaframma'];
+let openGroup = null;          // un solo gruppo aperto alla volta
+let styleGroups = new Map();   // gruppo -> [stili]
+
+function buildStyleChips(){
+  const groups = new Map();
+  for(const s of STYLES){
+    if(!groups.has(s.group)) groups.set(s.group, []);
+    groups.get(s.group).push(s);
+  }
+  styleGroups = new Map([...groups.entries()].sort((a, b) => {
+    const ia = CHIP_GROUP_ORDER.indexOf(a[0]), ib = CHIP_GROUP_ORDER.indexOf(b[0]);
+    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+  }));
+  renderStyleUI();
+}
+
+function curStyles(){
+  const t = tabs[activeTab];
+  if(!t) return [];
+  if(!t.styles) t.styles = [];
+  return t.styles;
+}
+
+function toggleStyle(key){
+  const st = curStyles();
+  const i = st.indexOf(key);
+  if(i >= 0) st.splice(i, 1); else st.push(key);
+  saveTabs();
+  renderStyleUI();
+}
+
+function renderStyleUI(){
+  const sc = $('stylechips');
+  if(!sc || !styleGroups.size) return;
+  const sel = new Set(curStyles());
+  const byKey = new Map(STYLES.map(s => [s.key, s]));
+  let html = '';
+  // riga dei chip attivi: un tocco li disattiva
+  const act = curStyles().filter(k => byKey.has(k));
+  if(act.length){
+    html += `<div class="activerow">` + act.map(k => {
+      const s = byKey.get(k);
+      return `<span class="chip on" title="${tr('styleActiveHint', s.tip)}" data-key="${s.key}">${s.label}${ico('x', 10)}</span>`;
+    }).join('') + `</div>`;
+  }
+  // etichette dei gruppi una in fianco all'altra
+  html += `<div class="gbar">` + [...styleGroups.keys()].map(g => {
+    const n = styleGroups.get(g).filter(s => sel.has(s.key)).length;
+    return `<span class="gbtn${g === openGroup ? ' open' : ''}" data-group="${g}">${g}${n ? `<b>${n}</b>` : ''}</span>`;
+  }).join('') + `</div>`;
+  // pannello del solo gruppo aperto
+  if(openGroup && styleGroups.has(openGroup)){
+    html += `<div class="gpanel">` + styleGroups.get(openGroup).map(s =>
+      `<span class="chip${sel.has(s.key) ? ' on' : ''}" title="${s.tip}" data-key="${s.key}">${s.label}</span>`
+    ).join('') + `</div>`;
+  }
+  sc.innerHTML = html;
+  sc.querySelectorAll('.chip').forEach(c => c.onclick = () => toggleStyle(c.dataset.key));
+  sc.querySelectorAll('.gbtn').forEach(b => b.onclick = () => {
+    openGroup = openGroup === b.dataset.group ? null : b.dataset.group;
+    renderStyleUI();
+  });
+}
+
+// risoluzione: arrotonda al multiplo di 16, entro 256..2048 (limiti sicuri per questi modelli)
+function snapDim(v){
+  let n = parseInt(v) || 1024;
+  n = Math.round(n / 16) * 16;
+  return Math.max(256, Math.min(2048, n));
+}
+// mostra/nasconde i campi liberi e aggiorna l'avviso sui megapixel
+function syncCustomSize(){
+  const isC = $('size').value === 'custom';
+  $('customsize').style.display = isC ? '' : 'none';
+  if(isC){
+    const w = snapDim($('cw').value), h = snapDim($('ch').value);
+    const mp = (w * h / 1e6).toFixed(1);
+    const warn = (w * h > 2359296) ? tr('mpWarn') : '';
+    $('mp-hint').textContent = `${w}×${h} = ${mp} MP${warn}`;
+  }
+}
+
+function commitForm(){
+  const t = tabs[activeTab];
+  if(!t) return;
+  t.title = $('title').value; t.ambientazione = $('amb').value;
+  t.vend = $('vend').value; t.vplot = $('vplot').value;
+  t.soggetto = $('soggetto').value; t.extra = $('extra').value;
+  t.num = parseInt($('num').value) || 1;
+  t.size = $('size').value === 'custom' ? (snapDim($('cw').value) + 'x' + snapDim($('ch').value)) : $('size').value;
+  t.steps = parseInt($('steps').value) || 6; t.dest = $('dest').value;
+  t.maxwords = Math.min(150, Math.max(20, parseInt($('maxwords').value) || 55));
+  t.imodel = $('wfsel').value || $('imodel').value || 'klein';
+  t.literal = $('literal').checked;
+  t.pstory = $('pstory').checked;
+  t.tagmode = $('tagmode').checked;
+  t.anatomy = $('anatomy').checked;
+  t.psteps = Math.max(1, Math.min(12, parseInt($('psteps').value) || 6));
+  t.evalon = $('evalon').checked;
+  t.evalevery = Math.min(200, Math.max(0, parseInt($('evalevery').value) || 0));
+  t.evaldeep = $('evaldeep').checked;
+  t.evalcriteria = $('evalcriteria').value;
+  $('evaldeep-row').style.display = t.evalon ? 'flex' : 'none';
+  $('evalcrit-row').style.display = t.evalon ? '' : 'none';
+  t.seed = $('seed').value.trim();
+  // t.styles e' gestito direttamente da toggleStyle (il pannello mostra un gruppo alla volta)
+  t.loras = {};
+  document.querySelectorAll('#loras .lora-item').forEach(d => {
+    const cb = d.querySelector('[type=checkbox]');
+    if(cb.checked) t.loras[cb.dataset.lora] = parseFloat(d.querySelector('[type=number]').value) || 1;
+  });
+  saveTabs();
+}
+
+['title','amb','vend','vplot','soggetto','extra','num','size','steps','maxwords','dest','literal','pstory','tagmode','anatomy','evalon','evalevery','evaldeep','evalcriteria','seed','cw','ch'].forEach(id =>
+  document.addEventListener('DOMContentLoaded', () => $(id).addEventListener('change', commitForm)));
+// formato personalizzato: mostra/nasconde i campi e aggiorna l'avviso megapixel dal vivo
+document.addEventListener('DOMContentLoaded', () => {
+  $('size').addEventListener('change', syncCustomSize);
+  $('cw').addEventListener('input', syncCustomSize);
+  $('ch').addEventListener('input', syncCustomSize);
+});
+
+async function init(){
+  applyStaticI18n(); updateLangToggle();
+  try{
+    const info = await api('/api/loras');
+    LORAS = info.loras; DEFAULT_DEST = info.default_dest;
+    STYLES = info.style_options || [];
+    buildStyleChips();
+    PERSONA_OPTS = info.persona_options || [];
+    PERSONA_PRESETS = info.persona_presets || [];
+    CHARACTERS = info.characters || {};
+    buildPersonaUI();
+    if(tabs[activeTab]) syncPersonaUI(tabs[activeTab]);
+    fillImodels(info.image_models || []);
+    $('imodel').onchange = () => {
+      const m = IMODELS.find(x => x.key === $('imodel').value);
+      if(m) $('steps').value = m.steps;   // steps consigliati per il modello
+      commitForm();
+      const t = tabs[activeTab];
+      if(t){ t.photo_imodel = t.imodel; fillWfOptions(t); }  // i workflow seguono il modello
+    };
+    $('wfsel').onchange = () => {
+      const m = IMODELS.find(x => x.key === $('wfsel').value);
+      if(m) $('steps').value = m.steps;
+      $('imodel').disabled = !!$('wfsel').value;
+      commitForm();
+      refOpen = {};
+      renderRefSlots();
+    };
+    $('vsecs').onchange = $('vfps').onchange = () => {
+      const t = tabs[activeTab];
+      if(!t) return;
+      t.vsecs = Math.max(1, Math.min(15, +$('vsecs').value || 5));
+      t.vfps = +$('vfps').value || 24;
+      saveTabs(); syncVideoOpts();
+    };
+    document.querySelectorAll('#modetab button').forEach(b => b.onclick = () => {
+      const t = tabs[activeTab];
+      if(!t) return;
+      commitForm();
+      if((t.cmode || 'photo') !== b.dataset.mode){
+        stashModeCfg(t);                 // FOTO e VIDEO hanno campi INDIPENDENTI:
+        t.cmode = b.dataset.mode;        // salvo il cassetto della modalita' che lascio
+        popModeCfg(t);                   // e carico quello della modalita' in cui entro
+      }
+      saveTabs(); renderForm();
+    });
+    document.querySelectorAll('#vmodetab button').forEach(b => b.onclick = () => {
+      const t = tabs[activeTab];
+      if(!t) return;
+      commitForm();
+      t.vmode = b.dataset.vmode;
+      // default utile al cambio: fuori dal regista il testo va di solito verbatim
+      t.literal = t.vmode !== 'regista';
+      $('literal').checked = t.literal;
+      saveTabs(); applyMode();
+    });
+    $('psteps').onchange = () => {
+      const t = tabs[activeTab];
+      if(!t) return;
+      t.psteps = Math.max(1, Math.min(12, +$('psteps').value || 6));
+      saveTabs();
+    };
+    $('vcrf').onchange = $('veasing').onchange = $('vdetail').onchange =
+    $('vspeed').onchange = $('vclean').onchange = () => {
+      const t = tabs[activeTab];
+      if(!t) return;
+      t.vcrf = Math.max(0, Math.min(51, parseInt($('vcrf').value)));
+      if(isNaN(t.vcrf)) t.vcrf = 12;
+      t.vspeed = parseFloat($('vspeed').value) || 1;
+      t.veasing = $('veasing').checked;
+      t.vdetail = $('vdetail').checked;
+      t.vclean = $('vclean').checked;
+      saveTabs();
+    };
+    const sel = $('model');
+    sel.innerHTML = '';
+    for(const m of info.models){
+      const o = document.createElement('option');
+      o.value = m; o.textContent = m;
+      sel.appendChild(o);
+    }
+    sel.value = localStorage.getItem('ps_model') && info.models.includes(localStorage.getItem('ps_model'))
+      ? localStorage.getItem('ps_model') : (info.default_model || '');
+    sel.onchange = () => localStorage.setItem('ps_model', sel.value);
+    const al = $('autolaunch');
+    al.checked = localStorage.getItem('ps_autolaunch') !== '0';   // attivo di default
+    al.onchange = () => localStorage.setItem('ps_autolaunch', al.checked ? '1' : '0');
+    // guida di primo avvio: se manca l'essenziale, avvisa e apri la finestra Modelli da solo
+    ESSENTIALS_MISSING = info.essentials_missing || [];
+    updateSetupBanner();
+    if(ESSENTIALS_MISSING.length && $('modeldlg').style.display !== 'flex') toggleModels();
+  }catch(e){ console.error(e); }
+  loadTabs(); renderForm(); loadPresets(); initResizers(); initLightbox();
+  refreshStatus(); setInterval(refreshStatus, 8000);
+  refreshSysmon(); setInterval(refreshSysmon, 3000);
+  refreshJobs();  setInterval(refreshJobs, 1500);
+  setInterval(animateProg, 55);   // percentuale fluida ~18 fps
+  $('scorefilter-sel').onchange = () => {
+    scoreFilter = parseInt($('scorefilter-sel').value) || 0;
+    for(const k in renderCache) delete renderCache[k];   // forza il ridisegno col nuovo filtro
+    refreshJobs();
+  };
+  $('dlg-name').addEventListener('keydown', e => { if(e.key === 'Enter') confirmPreset(); });
+  $('ap-msg').addEventListener('keydown', e => {
+    if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendAgent(); }
+  });
+}
+
+async function refreshStatus(){
+  try{
+    const s = await api('/api/status');
+    $('dot-comfy').className = 'dot' + (s.comfy ? ' on' : '');
+    $('dot-llm').className = 'dot' + (s.llm_model && s.llama_exe ? ' on' : '');
+  }catch(e){}
+}
+
+function setMeter(key, pct, text){
+  const bar = $('mb-' + key), val = $('mv-' + key);
+  if(!bar) return;
+  bar.style.width = Math.min(100, pct) + '%';
+  bar.className = pct >= 90 ? 'crit' : pct >= 75 ? 'warn' : '';
+  val.textContent = text;
+}
+
+async function refreshSysmon(){
+  let s;
+  try{ s = await api('/api/sysmon'); }catch(e){ return; }
+  if(s.cpu !== undefined) setMeter('cpu', s.cpu, Math.round(s.cpu) + '%');
+  if(s.ram_used !== undefined)
+    setMeter('ram', 100 * s.ram_used / s.ram_total, s.ram_used.toFixed(0) + '/' + s.ram_total.toFixed(0) + 'G');
+  if(s.gpu !== undefined) setMeter('gpu', s.gpu, Math.round(s.gpu) + '%');
+  if(s.vram_used !== undefined)
+    setMeter('vram', 100 * s.vram_used / s.vram_total, s.vram_used.toFixed(1) + '/' + s.vram_total.toFixed(0) + 'G');
+  $('mv-temp').textContent = s.gpu_temp !== undefined ? 'GPU ' + Math.round(s.gpu_temp) + '°C' : '–';
+  $('mv-tps').textContent = s.tps ? (s.streaming ? tr('tpsStreaming', s.tps) : tr('tpsLast', s.tps)) : '';
+  $('mv-loaded').textContent = (s.loaded && s.loaded.length) ? tr('inMemory', s.loaded.join(' + ')) : '';
+}
+
+async function startJob(){
+  commitForm();
+  // i workflow con immagine campione devono avere tutti gli slot pieni
+  for(const [i, t] of tabs.entries()){
+    if(!t.ambientazione.trim()) continue;
+    if(t.vauto && wfRefSlots(t.imodel).length >= 2) continue;  // regista: foto generate dal server
+    const missing = wfRefSlots(t.imodel).filter(ph => !(t.refs && t.refs[ph]));
+    if(missing.length){
+      showErr(tr('missRefImg', tabLabel(t, i)));
+      return;
+    }
+  }
+  const payloadTabs = tabs.filter(t => (t.ambientazione || '').trim()).map((t, i) => {
+    const video = t.cmode === 'video';
+    // INTEGRITA' MODALITA': un job e' O foto O video. Una scheda video esce sempre col suo
+    // workflow video; una scheda foto mai con un workflow video; i video sono 1 per scheda
+    // (il regista fa i suoi 3 render lato server) — il numero foto non filtra mai nei video.
+    let im = t.imodel || 'klein';
+    if(video && !isVideoWf(im)){
+      const opts = videoWfOptions(t.vmode || 'regista');
+      const pref = VWF[t.vmode || 'regista'];
+      im = (opts.some(m => m.key === pref) ? pref : (opts[0] || {}).key) || im;
+    }
+    if(!video && isVideoWf(im))
+      im = (t.photo_imodel && !String(t.photo_imodel).startsWith('wf:')) ? t.photo_imodel : 'klein';
+    const [w, h] = t.size.split('x').map(Number);
+    return {title: tabLabel(t, i), ambientazione: t.ambientazione, soggetto: t.soggetto,
+            extra: t.extra, num_images: video ? 1 : t.num, dest: t.dest || DEFAULT_DEST,
+            width: w, height: h, steps: t.steps, image_model: im,
+            literal: !!t.literal, seed: (t.seed || '').trim() || null,
+            styles: t.styles || [], max_words: t.maxwords || 55, tagmode: !!t.tagmode,
+            anatomy: t.anatomy !== false, eval_enabled: !!t.evalon, eval_every: t.evalevery || 0,
+            eval_deep: !!t.evaldeep, eval_criteria: (t.evalcriteria || '').trim(),
+            ref_images: Object.fromEntries(Object.entries(t.refs || {}).map(([ph, r]) => [ph, r.file])),
+            video_secs: t.vsecs || 5, video_fps: t.vfps || 24,
+            photo_steps: t.psteps || 6,
+            video_crf: t.vcrf != null ? t.vcrf : 12,
+            video_speed: t.vspeed || 1,
+            video_easing: !!t.veasing, video_detail: !!t.vdetail,
+            video_clean: !!t.vclean,
+            auto_frames: !!(t.vauto && wfRefSlots(t.imodel).length >= 2),
+            regia_end: (t.vend || '').trim(), regia_plot: (t.vplot || '').trim(),
+            photo_story: !!(t.pstory && t.cmode !== 'video'),
+            persona: (t.personaon && t.persona) ? t.persona : {},
+            loras: Object.entries(t.loras).map(([name, strength]) => ({name, strength}))};
+  });
+  if(!payloadTabs.length){ showErr(tr('fillOneSetting')); return; }
+  $('go').disabled = true;
+  mistBurst();   // flusso di nebbia energica dal pulsante verso la colonna dei job
+  try{
+    await api('/api/generate', {tabs: payloadTabs, auto_launch: $('autolaunch').checked,
+                                model: $('model').value || null});
+    refreshJobs();   // il job compare subito (accolto dal flusso), senza attendere il polling
+  }catch(e){ showErr(tr('errPrefix') + e.message); }
+  $('go').disabled = false;
+}
+
+// flusso di "nebbia energica" dal pulsante Genera verso l'alto della colonna dei job,
+// dove il nuovo job comparira' (jobEnter). Usa la Web Animations API: fluido, si autopulisce.
+function mistBurst(){
+  const go = $('go'), jobsCol = $('jobs');
+  if(!go || !jobsCol) return;
+  const a = go.getBoundingClientRect(), b = jobsCol.getBoundingClientRect();
+  const x0 = a.left + a.width / 2, y0 = a.top + a.height / 2;
+  const x1 = b.left + Math.min(120, b.width * 0.32), y1 = b.top + 46;   // cima della lista job
+  jobsCol.classList.remove('jobs-inflow');   // riavvia il lampo di accoglienza
+  void jobsCol.offsetWidth;
+  const N = 30;
+  for(let i = 0; i < N; i++){
+    const p = document.createElement('div');
+    p.className = 'mist';
+    const sz = 9 + Math.random() * 26;
+    p.style.width = p.style.height = sz + 'px';
+    document.body.appendChild(p);
+    const spreadY = (Math.random() - 0.5) * 130;
+    const midX = x0 + (x1 - x0) * 0.5 + (Math.random() - 0.5) * 90;
+    const midY = y0 + (y1 - y0) * 0.5 + spreadY - 30;
+    const delay = Math.random() * 220, dur = 780 + Math.random() * 460;
+    const anim = p.animate([
+      {transform:`translate(${x0 - sz/2}px,${y0 - sz/2}px) scale(.35)`, opacity:0},
+      {opacity:.95, offset:.18},
+      {transform:`translate(${midX - sz/2}px,${midY - sz/2}px) scale(1.15)`, opacity:.85, offset:.55},
+      {transform:`translate(${x1 - sz/2}px,${y1 - sz/2}px) scale(.5)`, opacity:0}
+    ], {duration:dur, delay, easing:'cubic-bezier(.35,.1,.2,1)'});
+    anim.onfinish = () => p.remove();
+    // fallback: se il tab va in background le animazioni si fermano e onfinish non scatta —
+    // rimuovo comunque la particella per non lasciare residui nel DOM
+    setTimeout(() => p.remove(), delay + dur + 500);
+  }
+  setTimeout(() => jobsCol.classList.add('jobs-inflow'), 620);   // il lampo quando il flusso arriva
+  setTimeout(() => jobsCol.classList.remove('jobs-inflow'), 1650);
+}
+
+// le etichette di fase vengono dal dizionario i18n: tr('ph_' + phase)
+
+// il job è video? (almeno una scheda produce un video)
+function jobIsVideo(j){
+  return j.tabs && j.tabs.some(t => t.is_video ||
+    (String(t.image_model||'').startsWith('wf:') &&
+     IMODELS.some(m => m.key === t.image_model && String(m.target).toLowerCase() === 'video')));
+}
+// etichetta di fase con la parola giusta (video/foto)
+function phaseLabel(j){
+  if(j.phase === 'generating') return jobIsVideo(j) ? tr('genVideoPhase') : tr('ph_generating');
+  const s = tr('ph_' + j.phase); return s === 'ph_' + j.phase ? j.phase : s;
+}
+// 'video' o 'foto' per il singolo elemento (nel Regista i primi 2 render sono foto, il 3° video)
+function itemNoun(t, i){
+  if(!t.is_video) return tr('nounPhoto');
+  if(t.auto_frames) return i < 2 ? tr('nounPhoto') : tr('nounVideo');
+  return tr('nounVideo');
+}
+// riepilogo minimo SEMPRE visibile (anche a job chiuso): risoluzione, e per i video frame + durata
+function cfgMini(j){
+  const t = j.tabs && j.tabs[0];
+  if(!t) return '';
+  let s = `${t.width}×${t.height}`;
+  if(t.is_video){
+    const secs = t.video_secs || 5, fps = t.video_fps || 24;
+    const frames = Math.max(9, Math.round(secs * fps / 8) * 8 + 1);
+    s += ` · ${frames} frame · ${secs}s@${fps}fps`;
+  }
+  return s;
+}
+
+function jobKey(j){
+  // SOLO ciò che cambia la STRUTTURA della card. I valori fluidi (percentuale, ETA, step)
+  // NON sono qui: li aggiorna updateLive/animateProg IN-PLACE, senza ricostruire il DOM →
+  // le animazioni CSS non ripartono mai da capo (niente scatti).
+  const st = j.tabs ? j.tabs.map(t => t.images.map(im =>
+    im.status + (im.score != null ? 's' + im.score : '') +
+    (im.has_file ? 'F' : '') + (im.preview ? 'p' : '')).join('')).join('|') : '';
+  return [j.phase, j.done, st, j.log ? j.log.length : 0, j.launch_at, scoreFilter].join('~');
+}
+
+// aggiorna SOLO i valori dinamici di una card già a schermo (percentuale, ETA, step, conteggi)
+// senza ricostruire il DOM: così le animazioni scorrono fluide durante tutta la generazione.
+function updateLive(div, j){
+  const isVid = jobIsVideo(j);
+  const pct = j.steps_total ? 100 * (j.steps_done || 0) / j.steps_total
+                            : (j.total ? 100 * j.done / j.total : 0);
+  const hud = div.querySelector(`[data-prog="hud-${j.id}"]`);
+  if(hud) hud.dataset.target = pct;
+  const hsub = div.querySelector('.hud:not(.analyze) .hud-sub');
+  if(hsub) hsub.textContent = tr('materialize', j.done, j.total, isVid ? tr('nounVideo') : tr('nounPhotos')) +
+    (j.eta_total != null ? ' · ' + tr('remainWord', fmtDur(j.eta_total)) : '');
+  if(j.eval_total){
+    const ev = div.querySelector(`[data-prog="evhud-${j.id}"]`);
+    if(ev) ev.dataset.target = 100 * (j.eval_done || 0) / j.eval_total;
+    const esub = div.querySelector('.hud.analyze .hud-sub');
+    if(esub) esub.textContent = tr('analyzePhase', Math.min((j.eval_done||0)+1, j.eval_total), j.eval_total);
+  }
+  (j.tabs || []).forEach((t, ti) => t.images.forEach((im, i) => {
+    if(im.status !== 'generating') return;
+    const el = div.querySelector(`[data-prog="${CSS.escape('holo-' + j.id + '-' + ti + '-' + i)}"]`);
+    if(el) el.dataset.target = im.frac != null ? im.frac
+      : (im.prog && im.prog[1] ? 100 * im.prog[0] / im.prog[1] : 0);
+    const cell = el ? el.closest('.thumb.gen') : null;
+    const cap = cell ? cell.querySelector('.gen-cap') : null;
+    if(cap){
+      const etaS = im.eta != null ? im.eta : (im.prog ? im.prog[2] : null);
+      let c = tr('preparing', itemNoun(t, i), i+1);
+      if(im.prog && im.prog[1]) c = tr('stepOf', im.prog[0], im.prog[1]);
+      if(etaS != null) c += ` · ~${etaS >= 90 ? Math.round(etaS/60) + ' min' : Math.max(1, Math.round(etaS)) + 's'}`;
+      cap.textContent = c;
+    }
+  }));
+  const cnt = div.querySelector('.job-count');
+  if(cnt) cnt.innerHTML = `${j.done}/${j.total} ${isVid ? tr('nounClip') : tr('nounPhotos')} · ${cfgMini(j)}` +
+    (j.eta_total != null ? ' · ' + tr('minsLeft', fmtDur(j.eta_total)) : '') +
+    ` · ${j.tabs.map(t=>t.title).join(', ').slice(0,50)}`;
+}
+
+async function refreshJobs(){
+  let list;
+  try{ list = await api('/api/jobs'); }catch(e){ return; }
+  const cont = $('jobs');
+  // rimuovi le card dei job spariti dal server (es. annullati senza foto)
+  const ids = new Set(list.map(j => j.id));
+  cont.querySelectorAll('.job').forEach(c => {
+    if(!ids.has(c.id.slice(4))){ c.remove(); delete renderCache[c.id.slice(4)]; }
+  });
+  if(!list.length){ $('scorefilter').style.display = 'none'; return; }
+  if(cont.querySelector('.empty')) cont.innerHTML = '';
+  let anyScored = false;
+  let prevDiv = null;   // il div del job precedente (piu' recente): tiene l'ordine giusto
+  for(const jl of list){
+    const j = await api('/api/job/' + jl.id);
+    if(j.tabs && j.tabs.some(t => t.images.some(im => im.score != null))) anyScored = true;
+    let div = document.getElementById('job-' + j.id);
+    const isNew = !div;
+    if(isNew){
+      div = document.createElement('div');
+      div.id = 'job-' + j.id;
+      // la lista arriva dal piu' recente: ogni nuovo div va subito DOPO il precedente
+      if(prevDiv) prevDiv.after(div); else cont.prepend(div);
+    }
+    const key = jobKey(j);
+    const editing = div.contains(document.activeElement) &&
+       ['TEXTAREA','INPUT'].includes(document.activeElement.tagName);
+    const skip = renderCache[j.id] === key || editing;
+    prevDiv = div;
+    if(skip){
+      // struttura invariata: aggiorno solo i valori dinamici IN-PLACE (niente ricostruzione,
+      // niente scatti) mentre il job avanza.
+      if(!editing && ['generating','evaluating'].includes(j.phase)) updateLive(div, j);
+      continue;
+    }
+    renderCache[j.id] = key;
+    if(!(j.id in collapseState))
+      collapseState[j.id] = ['done','error','cancelled'].includes(j.phase);
+    const runningNow = !['done','error','cancelled'].includes(j.phase);
+    div.className = 'job' + (collapseState[j.id] ? ' closed' : '') + (runningNow ? ' running' : '');
+    div.innerHTML = renderJob(j);
+    restoreDetails(div);
+    runTypewriters(div);
+    if(isNew){   // animazione morbida di comparsa del nuovo job
+      div.classList.add('job-enter');
+      setTimeout(() => div.classList.remove('job-enter'), 600);
+    }
+  }
+  $('scorefilter').style.display = anyScored ? 'flex' : 'none';
+}
+
+// percentuale fluida: avanza a piccoli passi verso il target reale, si adegua se rallenta o
+// accelera, NON torna mai indietro; se il render e' lento fa un creep lento e si ferma verso il
+// tetto (recupera quando il target reale avanza). Snap a 100 quando finisce.
+const progShown = {};
+function animateProg(){
+  document.querySelectorAll('[data-prog]').forEach(el => {
+    const key = el.dataset.prog;
+    const target = parseFloat(el.dataset.target) || 0;
+    let shown = progShown[key] != null ? progShown[key] : target;
+    if(target >= 100){
+      shown = 100;
+    }else{
+      // avanza un filo oltre il reale (+6%), poi si FERMA a far recuperare il render;
+      // quando il target reale sale, riparte e lo insegue. Mai oltre 96 finche' non finisce.
+      const ceil = Math.min(96, target + 6);
+      shown += (ceil - shown) * 0.12;
+    }
+    shown = Math.max(shown, progShown[key] || 0);   // mai indietro
+    progShown[key] = shown;
+    const pv = el.querySelector('.pv'); if(pv) pv.textContent = Math.round(shown);
+    const fill = el.querySelector('.hud-fill, .stfill'); if(fill) fill.style.width = shown.toFixed(1) + '%';
+  });
+  // pulizia: dimentica le chiavi non piu' a schermo (job finiti) per non trascinare il 100%
+  for(const k in progShown){
+    if(!document.querySelector(`[data-prog="${CSS.escape(k)}"]`)) delete progShown[k];
+  }
+}
+
+// log "a macchina da scrivere" stile film: digita l'ultima riga solo quando cambia
+const typedLog = {};
+function runTypewriters(div){
+  div.querySelectorAll('.livelog .tw').forEach(el => {
+    const jid = el.dataset.job, full = el.dataset.full || '';
+    if(typedLog[jid] === full){ el.textContent = full; return; }
+    typedLog[jid] = full;
+    clearInterval(el._tw);
+    let n = 0; el.textContent = '';
+    el._tw = setInterval(() => {
+      n += 2;
+      el.textContent = full.slice(0, n);
+      if(n >= full.length){ clearInterval(el._tw); el.textContent = full; }
+    }, 14);
+  });
+}
+
+function toggleJob(jid, ev){
+  if(ev && ev.target.closest && ev.target.closest('button,input,select,textarea,a')) return;
+  collapseState[jid] = !collapseState[jid];
+  const div = document.getElementById('job-' + jid);
+  if(div) div.classList.toggle('closed', collapseState[jid]);
+  const ar = div && div.querySelector('.arrow');
+  if(ar) ar.innerHTML = ico(collapseState[jid] ? 'chevR' : 'chevD', 14);
+}
+
+function fmtDur(s){
+  if(s >= 3600) return `~${Math.floor(s/3600)}h ${Math.round(s%3600/60)}min`;
+  if(s >= 90) return `~${Math.round(s/60)} min`;
+  return `~${Math.max(1, Math.round(s))}s`;
+}
+
+// riepilogo compatto della configurazione con cui il job è stato lanciato (chip informativi)
+function jobCfgChips(t, vid){
+  if(vid === undefined) vid = isVideoWf(t.image_model);
+  const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  const chip = (label, val, klass) => `<span class="cfgchip${klass ? ' ' + klass : ''}">${label}${val != null && val !== '' ? ` <b>${esc(val)}</b>` : ''}</span>`;
+  const c = [];
+  c.push(chip(ico('camera', 11), `${t.width}×${t.height}`));
+  c.push(chip(tr('chipStep'), t.steps));
+  c.push(chip(tr('chipSeed'), (t.seed != null && t.seed !== '') ? t.seed : tr('chipSeedRandom')));
+  if(vid){
+    const mode = t.auto_frames ? tr('cfgRegista')
+      : (wfRefSlots(t.image_model).length >= 2 ? tr('cfgBoth') : tr('cfgStart'));
+    c.push(chip(tr('chipMode'), mode, 'k'));
+    if(t.video_secs) c.push(chip(tr('chipDuration'), t.video_secs + 's'));
+    if(t.video_fps) c.push(chip(tr('chipFps'), t.video_fps));
+    if(t.video_speed && Math.abs(t.video_speed - 1) > 0.01) c.push(chip(tr('chipSpeed'), t.video_speed + '×'));
+    if(t.video_crf != null) c.push(chip(tr('chipCRF'), t.video_crf));
+    if(t.video_easing) c.push(chip(tr('chipEasing'), null));
+    if(t.video_detail) c.push(chip(tr('chipDetailer'), null));
+    if(t.auto_frames && t.photo_steps) c.push(chip(tr('chipPhotoSteps'), t.photo_steps));
+  } else {
+    if(t.literal) c.push(chip(tr('chipLiteral'), null));
+    if(t.tagmode) c.push(chip(tr('chipTag'), null));
+    if(t.anatomy !== false) c.push(chip(tr('chipAnatomy'), null));
+    if(t.max_words) c.push(chip(tr('chipWords'), t.max_words));
+  }
+  const loras = (t.loras || []).filter(l => l && l.name);
+  if(loras.length) c.push(chip(tr('chipLoRA'), loras.map(l =>
+    l.name.replace(/\.[^.]+$/, '') + (l.strength != null ? ' ' + l.strength : '')).join(', '), 'k'));
+  if(!vid && (t.styles || []).length) c.push(chip(tr('chipStyles'), t.styles.length));
+  const pd = personaDesc(t.persona);
+  if(pd) c.push(`<span class="cfgchip k" title="${esc(pd)}">${tr('chipPersona')} <b>${tr('chipConfigured')}</b></span>`);
+  if(t.soggetto) c.push(chip(tr('chipSubject'), t.soggetto, 'k'));
+  return `<div class="cfgchips">${c.join('')}</div>`;
+}
+
+function renderJob(j){
+  // barra totale a step: avanza dentro ogni foto, non solo a foto finita
+  const pct = j.steps_total ? Math.round(100 * (j.steps_done || 0) / j.steps_total)
+                            : (j.total ? Math.round(100 * j.done / j.total) : 0);
+  const running = !['done','error','cancelled'].includes(j.phase);
+  // barra di lancio/modifica prompt: solo in revisione manuale o se programmato a orario
+  const editable = j.phase === 'prompts_ready' || (j.phase === 'scheduled' && j.launch_at);
+  window['job_' + j.id] = j;
+  // job FOTO o VIDEO: badge per distinguerli a colpo d'occhio (sono due cose diverse)
+  const isVid = jobIsVideo(j) || j.tabs.some(t => t.images.some(im => im.video));
+  let html = `
+    <div class="job-head" onclick="toggleJob('${j.id}', event)">
+      <span class="arrow">${ico(collapseState[j.id] ? 'chevR' : 'chevD', 14)}</span>
+      <span class="phase" style="background:${isVid ? 'rgba(52,199,120,.14);color:#4fd68f' : 'rgba(122,146,255,.14);color:#93a7ff'}">${isVid ? ico('film', 11) + ' ' + tr('badgeVideo') : ico('camera', 11) + ' ' + tr('badgePhoto')}</span>
+      <span class="phase ph-${j.phase}">${phaseLabel(j)}</span>
+      <span class="job-title">${j.name}</span>
+      <span class="job-count" style="color:var(--muted);font-size:13px">${j.done}/${j.total} ${isVid ? tr('nounClip') : tr('nounPhotos')} · ${cfgMini(j)}${
+        j.eta_total != null ? ' · ' + tr('minsLeft', fmtDur(j.eta_total)) : ''} · ${j.tabs.map(t=>t.title).join(', ').slice(0,50)}</span>
+      ${running ? `<button class="btn-small" onclick="api('/api/job/${j.id}/cancel',{})">${ico('x', 12)}${tr('cancelBtn')}</button>` : ''}
+      ${(!running || editable) ? `<button class="btn-small" onclick="removeJob('${j.id}')">${ico('trash', 12)}${tr('removeBtn')}</button>` : ''}
+      ${j.error ? `<div class="job-sub" style="color:var(--err)">${j.error}</div>` : ''}
+    </div>
+    ${(j.phase === 'generating' || j.phase === 'evaluating') ? '' : `<div class="progress"><div style="width:${pct}%"></div></div>`}
+    <div class="jbody">`;
+
+  // sfondo bluastro sfocato per le celle in creazione: l'ultima foto gia' pronta del batch
+  let bgUrl = '';
+  j.tabs.forEach((t, ti) => t.images.forEach((im, i) => { if(im.has_file && !im.video) bgUrl = `/api/file?job=${j.id}&t=${ti}&i=${i}`; }));
+
+  // HUD di completamento totale (etereo, percentuale fluida) durante la creazione
+  if(j.phase === 'generating'){
+    const start = Math.round(progShown['hud-' + j.id] != null ? progShown['hud-' + j.id] : pct);
+    html += `<div class="hud" data-prog="hud-${j.id}" data-target="${pct}">
+      <div class="hud-pc"><span class="pv">${start}</span><small>%</small></div>
+      <div class="hud-mid">
+        <div class="hud-bar"><div class="hud-fill" style="width:${start}%"></div></div>
+        <div class="hud-sub">${tr('materialize', j.done, j.total, isVid ? tr('nounVideo') : tr('nounPhotos'))}${j.eta_total != null ? ' · ' + tr('remainWord', fmtDur(j.eta_total)) : ''}</div>
+      </div></div>`;
+  }
+  // HUD della FASE DI ANALISI: barra che riparte da 0 (chiave diversa da 'hud-'), foto x/y
+  if(j.phase === 'evaluating'){
+    const epct = j.eval_total ? Math.round(100 * (j.eval_done || 0) / j.eval_total) : 0;
+    const start = Math.round(progShown['evhud-' + j.id] != null ? progShown['evhud-' + j.id] : epct);
+    html += `<div class="hud analyze" data-prog="evhud-${j.id}" data-target="${epct}">
+      <div class="hud-pc"><span class="pv">${start}</span><small>%</small></div>
+      <div class="hud-mid">
+        <div class="hud-bar"><div class="hud-fill" style="width:${start}%"></div></div>
+        <div class="hud-sub">${tr('analyzePhase', Math.min((j.eval_done||0)+1, j.eval_total), j.eval_total)}</div>
+      </div></div>`;
+  }
+
+  // riga live "a macchina da scrivere": l'ultima azione durante la creazione
+  if(running && j.log && j.log.length){
+    const full = j.log[j.log.length-1].replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+    html += `<div class="livelog">${ico('clock',12)}<span class="tw" data-job="${j.id}" data-full="${full}"></span></div>`;
+  }
+
+  if(editable){
+    const when = j.launch_at ? new Date(j.launch_at * 1000) : null;
+    html += `<div class="launchbar">
+      <button class="btn-go" onclick="launch('${j.id}', null)">${ico('play', 12)}${tr('startNow')}</button>
+      <span class="hint">${tr('orWord')}</span>
+      <input type="datetime-local" id="dt-${j.id}">
+      <button class="btn-small" onclick="launch('${j.id}', document.getElementById('dt-${j.id}').value)">${ico('clock', 12)}${tr('schedule')}</button>
+      ${when ? `<span class="hint">${ico('clock', 11)} ${tr('scheduledAt', when.toLocaleString(tr('locale')))}</span>` : ''}
+    </div>`;
+  }
+
+  j.tabs.forEach((t, ti) => {
+    const vidTab = isVideoWf(t.image_model);
+    html += `<div class="tabsec"><h3>${ico('folder', 13)} ${t.title}
+      <span class="modelbadge">${(IMODELS.find(x=>x.key===t.image_model)||{}).label || t.image_model || ''}</span>
+      <small>· ${t.num_images} ${vidTab ? tr('nounClip') : tr('nounPhotos')} · ${t.width}×${t.height} ·
+      ${t.dest} <button class="btn-small" title="${tr('openFolderT')}" onclick="api('/api/open_folder',{path:${JSON.stringify(t.dest).replace(/"/g,'&quot;')}}).catch(e=>showErr(e.message))">${ico('folder', 12)}</button></small></h3>
+      ${jobCfgChips(t, vidTab)}`;
+    if(editable && t.images.some(im => im.prompt)){
+      const text = t.images.map(im => im.prompt || '').join('\n');
+      html += `<textarea class="prompt-edit" id="pe-${j.id}-${ti}" spellcheck="false">${text.replace(/</g,'&lt;')}</textarea>
+        <div style="margin-top:6px;display:flex;gap:8px;align-items:center">
+          <button class="btn-small" onclick="savePrompts('${j.id}', ${ti})">${ico('save', 12)}${tr('saveChanges')}</button>
+          <span class="hint">${tr('onePromptPerLine')}</span>
+        </div>`;
+    }else{
+      let thumbs = '';
+      let pending = 0;
+      t.images.forEach((im, i) => {
+        if(im.has_file){
+          if(scoreHidden(im.score)) return;   // filtro voto
+          const fsrc = `/api/file?job=${j.id}&t=${ti}&i=${i}`;
+          const media = im.video
+            ? `<video src="${fsrc}" muted loop playsinline preload="metadata" onmouseover="this.play()" onmouseout="this.pause();this.currentTime=0"></video><span class="vbadge">${ico('play', 9)} video</span>`
+            : `<img src="${fsrc}" loading="lazy">`;
+          const tb = im.dur ? `<span class="tbadge" title="${im.wall ? tr('renderTotalT', fmtDur(im.dur), fmtDur(im.wall)) : tr('renderT', fmtDur(im.dur))}">${ico('clock', 10)} ${fmtDur(im.dur)}</span>` : '';
+          // solo le FOTO si trascinano negli slot "Primo/Ultimo frame" del workflow video
+          const drag = im.video ? '' : ` draggable="true" ondragstart="dragPhoto(event,'${j.id}',${ti},${i})" title="${tr('dragToFrameT')}"`;
+          thumbs += `<div class="thumb"${drag} onclick="lightbox('${j.id}',${ti},${i})" oncontextmenu="event.preventDefault();showCtx(event,'${j.id}',${ti},${i})">
+            ${media}
+            ${tb}
+            ${scoreBadge(im.score)}
+            <span class="del" title="${tr('delPhotoT')}" onclick="event.stopPropagation();deleteImage('${j.id}',${ti},${i})">${ico('trash', 13)}</span>
+            <span class="del bk" title="${tr('saveAsCharT')}" onclick="event.stopPropagation();openNameDlg('${j.id}',${ti},${i})">${ico('bookmark', 13)}</span></div>`;
+        }else if(im.status === 'generating'){
+          // caption: step reali quando disponibili; ETA a tempo (im.eta) altrimenti dal websocket
+          let cap = tr('preparing', itemNoun(t, i), i+1);
+          const etaS = im.eta != null ? im.eta : (im.prog ? im.prog[2] : null);
+          if(im.prog && im.prog[1]) cap = tr('stepOf', im.prog[0], im.prog[1]);
+          if(etaS != null) cap += ` · ~${etaS >= 90 ? Math.round(etaS/60) + ' min' : Math.max(1, Math.round(etaS)) + 's'}`;
+          // TARGET = frazione A TEMPO calcolata dal server (avanza anche fra uno step e l'altro e
+          // durante il caricamento del modello); ripiego sugli step solo se manca.
+          const ipct = im.frac != null ? im.frac
+                       : (im.prog && im.prog[1] ? 100 * im.prog[0] / im.prog[1] : 0);
+          const hkey = `holo-${j.id}-${ti}-${i}`;
+          const hstart = Math.round(progShown[hkey] != null ? progShown[hkey] : ipct);
+          let parts = '';
+          for(let k = 0; k < 16; k++)
+            parts += `<i style="left:${3 + k * 6.2}%;bottom:${6 + (k % 4) * 3}%;animation-duration:${(1.9 + (k % 5) * 0.55).toFixed(2)}s;animation-delay:${(k * 0.19).toFixed(2)}s"></i>`;
+          const bgsrc = im.preview || bgUrl;   // la mini-anteprima generata (una per scheda), riusata
+          // .bg sfocata di fondo + due strati .reveal/.reveal2 di flusso (materia che scorre)
+          const bg = bgsrc ? `<div class="bg" style="background-image:url('${bgsrc}')"></div>`
+                           + `<div class="reveal" style="background-image:url('${bgsrc}')"></div>`
+                           + `<div class="reveal2" style="background-image:url('${bgsrc}')"></div>` : '';
+          thumbs += `<div class="thumb gen">
+            ${bg}<div class="parts">${parts}</div>
+            <div class="holo" data-prog="${hkey}" data-target="${ipct}"><div class="pc"><span class="pv">${hstart}</span>%</div><div class="lbl">${tr('materializeShort')}</div></div>
+            <div class="st"><span class="gen-cap">${cap}</span><div class="stbar"><div class="stfill" style="width:${hstart}%"></div></div></div></div>`;
+        }else if(im.status === 'error'){
+          thumbs += `<div class="thumb" style="color:var(--err)">${tr('errWord')}<div class="st">${(im.error||'').slice(0,60)}</div></div>`;
+        }else if(im.status === 'pending'){
+          pending++;   // niente caselle vuote: solo un contatore
+        }
+      });
+      if(pending) thumbs += `<div class="pendchip">${tr('pendingN', pending)}</div>`;
+      html += `<div class="grid">${thumbs}</div>`;
+      const plist = t.images.filter(im => im.prompt);
+      if(plist.length){
+        html += `<details data-dk="prompt-${j.id}-${ti}"><summary>${tr('promptsN', plist.length)}</summary><div class="log">${
+          plist.map((im,i) => {
+            let s = `${tr('photoN', i+1)} (${tr('seedWord')} ${im.seed ?? '—'}${im.score!=null?`, ${tr('scoreWord')} ${im.score||'?'}/10`:''})\n${im.prompt}`;
+            if(im.final_prompt && im.final_prompt !== im.prompt)
+              s += `\n${tr('effectivePositive')}\n${im.final_prompt}`;
+            return s;
+          }).join('\n\n').replace(/</g,'&lt;')
+        }</div></details>`;
+      }
+    }
+    html += `</div>`;
+  });
+
+  html += `<details data-dk="log-${j.id}"><summary>${tr('controlLog')}</summary><div class="log">${j.log.join('\n').replace(/</g,'&lt;')}</div></details></div>`;
+  return html;
+}
+
+// riapre i pannelli <details> che l'utente aveva aperto, dopo un ridisegno della card
+function restoreDetails(div){
+  div.querySelectorAll('details[data-dk]').forEach(d => {
+    if(detailsOpen.has(d.dataset.dk)) d.open = true;
+    d.addEventListener('toggle', () => {
+      if(d.open) detailsOpen.add(d.dataset.dk); else detailsOpen.delete(d.dataset.dk);
+    });
+  });
+}
+
+async function launch(jid, dtValue){
+  let at = null;
+  if(dtValue){
+    const ms = new Date(dtValue).getTime();
+    if(isNaN(ms)){ showErr(tr('dateInvalid')); return; }
+    if(ms < Date.now() + 5000){ showErr(tr('timeInPast')); return; }
+    at = ms;
+  }
+  try{
+    await api(`/api/job/${jid}/launch`, {at});
+    delete renderCache[jid];
+    refreshJobs();
+  }catch(e){ showErr(tr('errPrefix') + e.message); }
+}
+
+async function savePrompts(jid, ti){
+  const ta = $(`pe-${jid}-${ti}`);
+  const prompts = ta.value.split('\n').map(s => s.trim()).filter(Boolean);
+  if(!prompts.length){ showErr(tr('noPrompt')); return; }
+  try{
+    await api(`/api/job/${jid}/prompts`, {tab: ti, prompts});
+    delete renderCache[jid];
+    refreshJobs();
+  }catch(e){ showErr(tr('errPrefix') + e.message); }
+}
+
+function fillImodels(list){
+  IMODELS = list;
+  const isel = $('imodel'), wsel = $('wfsel');
+  const curI = isel.value, curW = wsel.value;
+  isel.innerHTML = '';
+  wsel.innerHTML = '<option value="">' + tr('wfNoneUseModel') + '</option>';
+  for(const m of IMODELS){
+    const o = document.createElement('option');
+    o.value = m.key;
+    o.textContent = m.label.replace(/^WF: /, '') + (m.installed === false ? '' + tr('toDownload') : '');
+    if(m.installed === false) o.disabled = true;
+    (m.custom ? wsel : isel).appendChild(o);
+  }
+  if(curI && IMODELS.some(m => m.key === curI && !m.custom)) isel.value = curI;
+  if(curW && IMODELS.some(m => m.key === curW && m.custom)) wsel.value = curW;
+  isel.disabled = !!wsel.value;
+  if(tabs[activeTab]) applyMode();   // coi dati dei modelli, rifiltra il workflow per modalita'
+  else renderRefSlots();
+}
+
+// ---------------- immagini campione dei workflow (slot richiudibili) ----------------
+let refOpen = {};   // stato aperto/chiuso degli slot della scheda attiva
+
+function wfRefSlots(key){
+  const m = IMODELS.find(x => x.key === key && x.custom);
+  return (m && m.ref_slots) || [];
+}
+
+function isVideoWf(key){
+  const m = IMODELS.find(x => x.key === key && x.custom);
+  return !!(m && String(m.target).toLowerCase() === 'video');
+}
+
+// ---------------- modalita' FOTO / VIDEO (con sotto-modalita' video) ----------------
+const VWF = {   // workflow video di default per sotto-modalita'
+  regista: 'wf:video_ltx_i2v_likeness_fine',
+  start:   'wf:video_ltx_i2v_likeness',
+  both:    'wf:video_ltx_i2v_likeness_fine',
+};
+
+function videoWfOptions(vmode){
+  const need = vmode === 'start' ? 1 : 2;   // slot immagine richiesti
+  return IMODELS.filter(m => m.custom && String(m.target).toLowerCase() === 'video'
+                             && (m.ref_slots || []).length === need);
+}
+
+function fillWfOptions(t){
+  const wsel = $('wfsel');
+  const video = t.cmode === 'video';
+  wsel.innerHTML = video ? '' : '<option value="">' + tr('wfNoneUseModel') + '</option>';
+  // i workflow APPARTENGONO ai modelli: se target è la chiave di un modello foto, il
+  // workflow compare solo con quel modello selezionato; target sconosciuto = generico.
+  // Se è selezionato un workflow, il "modello corrente" è il SUO target (non si nasconde
+  // mai il workflow selezionato); photo_imodel si usa solo se è un modello base valido.
+  const baseKeys = new Set(IMODELS.filter(m => !m.custom).map(m => m.key));
+  let pm = t.imodel || 'klein';
+  if(pm.startsWith('wf:')){
+    const cur = IMODELS.find(m => m.key === pm);
+    pm = (cur && baseKeys.has(String(cur.target))) ? String(cur.target)
+       : (baseKeys.has(t.photo_imodel) ? t.photo_imodel : 'klein');
+  }
+  const list = video ? videoWfOptions(t.vmode || 'regista')
+                     : IMODELS.filter(m => m.custom && String(m.target).toLowerCase() !== 'video'
+                                           && (!baseKeys.has(String(m.target)) || m.target === pm
+                                               || m.key === t.imodel));
+  for(const m of list){
+    const o = document.createElement('option');
+    o.value = m.key;
+    o.textContent = m.label.replace(/^WF: /, '') + (m.installed === false ? '' + tr('toDownload') : '');
+    wsel.appendChild(o);
+  }
+  wsel.value = ((t.imodel || '').startsWith('wf:') && list.some(m => m.key === t.imodel)) ? t.imodel : '';
+  $('imodel').disabled = !!wsel.value;
+}
+
+function applyMode(){
+  const t = tabs[activeTab];
+  if(!t) return;
+  t.cmode = t.cmode || 'photo';
+  t.vmode = t.vmode || 'regista';
+  const video = t.cmode === 'video';
+  const regista = video && t.vmode === 'regista';
+  document.querySelectorAll('#modetab button').forEach(b =>
+    b.classList.toggle('on', b.dataset.mode === t.cmode));
+  $('vmodetab').style.display = video ? 'flex' : 'none';
+  document.querySelectorAll('#vmodetab button').forEach(b =>
+    b.classList.toggle('on', b.dataset.vmode === t.vmode));
+  // modello/workflow coerenti con la modalita'
+  if(video){
+    t.vauto = regista;
+    const opts = videoWfOptions(t.vmode);
+    if(opts.length && (!(t.imodel || '').startsWith('wf:') || !opts.some(m => m.key === t.imodel))){
+      const pref = VWF[t.vmode];
+      t.imodel = opts.some(m => m.key === pref) ? pref : opts[0].key;
+    }
+  } else {
+    t.vauto = false;
+    if(isVideoWf(t.imodel)) t.imodel = t.photo_imodel || 'klein';
+    // ricorda l'ultima scelta foto — solo i MODELLI base, mai i workflow (altrimenti
+    // il filtro dei workflow per modello perde il riferimento e svuota la tendina)
+    else if(!(t.imodel || '').startsWith('wf:')) t.photo_imodel = t.imodel;
+  }
+  fillWfOptions(t);
+  // visibilita' dei blocchi per modalita'
+  const show = (id, on) => { const e = $(id); if(e) e.style.display = on ? '' : 'none'; };
+  // tema: in video il pannello vira al verde (override dei token accent)
+  $('form-card').classList.toggle('mode-video', video);
+  // layout: in video Formato e Steps si spostano nella riga dei parametri video,
+  // in un ordine coerente (Formato | Durata | FPS | Steps video | Steps foto)
+  if(video){
+    $('videoopts').insertBefore($('size-box'), $('videoopts').firstElementChild);
+    $('videoopts').insertBefore($('steps-box'), $('psteps-box'));
+  } else {
+    $('params-row').appendChild($('size-box'));
+    $('params-row').appendChild($('steps-box'));
+  }
+  // FOTO: tutti i controlli. VIDEO: solo l'essenziale; i controlli che servono alla
+  // GENERAZIONE DELLE FOTO (LLM, LoRA, soggetto, stili, anatomia, lunghezza prompt)
+  // compaiono SOLO nel Regista, che le foto le crea davvero.
+  show('imodel-box', !video);                 // il modello foto: in video comanda il workflow
+  show('extra-box', !video);                  // istruzione per l'LLM foto
+  show('maxwords-box', !video || regista);
+  show('style-label', !video || regista);  show('stylechips', !video || regista);
+  show('persona-label', !video || regista);  show('personabox', !video || regista);
+  show('soggetto-box', !video || regista);
+  show('num-box', !video || !regista);        // regista = 1 set (foto+foto+video); altrove n. varianti
+  show('lora-label', !video || regista);  show('loras', !video || regista);
+  show('presets-label', !video);  show('presets', !video);
+  show('llm-label', !video || regista);  show('model', !video || regista);
+  show('literal-row', !video);                // nei video a testo è sempre verbatim
+  show('pstory-row', !video);                 // storia fotografica: solo nella tab FOTO
+  show('anatomy-row', !video || regista);
+  show('tagmode-row', !video);
+  show('eval-row', !video);  show('evaldeep-row', !video && !!t.evalon);
+  show('psteps-box', regista);
+  show('vend-box', regista);   show('vplot-box', regista);
+  $('num-label').textContent = video ? tr('numVideo') : tr('numPhoto');
+  $('psteps').value = t.psteps || 6;
+  // etichette contestuali
+  $('amb-label').textContent = !video ? tr('ambLabelPhoto') : (regista ? tr('ambLabelRegista') : tr('ambLabelMotion'));
+  $('amb').placeholder = !video ? tr('ambPhPhoto') : (regista ? tr('ambPhRegista') : tr('ambPhMotion'));
+  $('wfsel-label').textContent = video ? tr('wfselVideo') : tr('wfselPhoto');
+  $('steps-label').textContent = video ? tr('stepsVideo') : tr('steps');
+  renderRefSlots();
+}
+
+function syncVideoOpts(){
+  const t = tabs[activeTab];
+  const on = isVideoWf($('wfsel').value);
+  $('videoopts').style.display = on ? '' : 'none';
+  $('videoopts2').style.display = on ? '' : 'none';
+  const two = on && wfRefSlots($('wfsel').value).length >= 2;
+  $('vauto-row').style.display = two ? 'flex' : 'none';
+  if(!on || !t) return;
+  $('vauto').checked = two && !!t.vauto;
+  $('vcrf').value = t.vcrf != null ? t.vcrf : 12;
+  $('vspeed').value = String(t.vspeed || 1);
+  $('veasing').checked = !!t.veasing;
+  $('vdetail').checked = !!t.vdetail;
+  $('vclean').checked = !!t.vclean;   // OFF di default: l'originale non si tocca
+  $('vsecs').value = t.vsecs || 5;
+  $('vfps').value = t.vfps || 24;
+  const secs = +$('vsecs').value || 5, fps = +$('vfps').value || 24;
+  const frames = Math.max(9, Math.round(secs * fps / 8) * 8 + 1);
+  const vm = t.cmode === 'video' ? (t.vmode || 'regista') : null;
+  $('vinfo').textContent = tr('vinfoFrames', frames,
+    (vm === 'regista' ? tr('vinfoRegista') : vm === 'both' ? tr('vinfoBoth') : tr('vinfoStart')));
+}
+
+function renderRefSlots(){
+  syncVideoOpts();
+  const box = $('refslots');
+  const t = tabs[activeTab];
+  if(!box || !t) return;
+  const slots = wfRefSlots($('wfsel').value);
+  box.innerHTML = '';
+  box.style.display = slots.length ? '' : 'none';
+  if(!slots.length) return;
+  if(isVideoWf($('wfsel').value) && t.vauto && slots.length >= 2){
+    box.innerHTML = `<div class="vinfo" style="display:block;text-align:center;padding:10px;white-space:normal">
+      ${ico('film', 12)} ${tr('registaOnMsg')}</div>`;
+    return;
+  }
+  if(!t.refs) t.refs = {};
+  const vid = isVideoWf($('wfsel').value);
+  slots.forEach((ph, i) => {
+    const r = t.refs[ph];
+    const open = ph in refOpen ? refOpen[ph] : !r;   // aperto se manca l'immagine
+    const label = vid ? (i === 0 ? ico('film', 12) + ' ' + tr('firstFrame')
+                                 : ico('flag', 12) + ' ' + tr('lastFrame'))
+                      : (slots.length > 1 ? tr('sampleImageN', i + 1) : tr('sampleImage'));
+    const d = document.createElement('div');
+    d.className = 'refslot';
+    d.innerHTML = `
+      <div class="rs-head">${ico(open ? 'chevD' : 'chevR', 12)}<span>${label}</span>
+        <span class="rs-state ${r ? 'ok' : 'miss'}">${r ? tr('loaded') : tr('missing')}</span></div>
+      <div class="rs-body" style="display:${open ? '' : 'none'}">
+        ${r ? `<img class="rs-thumb" src="${r.thumb}" alt="">
+               <span class="rs-file" title="${r.file}">${r.file}</span>
+               <button class="btn-small rs-del" title="${tr('removeImgT')}">${ico('trash', 12)}</button>`
+            : `<div class="rs-drop">${tr('dropHere')}</div>`}
+      </div>`;
+    d.querySelector('.rs-head').onclick = () => { refOpen[ph] = !open; renderRefSlots(); };
+    const del = d.querySelector('.rs-del');
+    if(del) del.onclick = e => { e.stopPropagation(); delete t.refs[ph]; saveTabs(); renderRefSlots(); };
+    const drop = d.querySelector('.rs-drop');
+    if(drop) drop.onclick = () => pickRefFile(ph);
+    // il DROP si gestisce sul corpo dello slot (c'è sempre, anche quando è gia' pieno):
+    // accetta sia i file dal disco sia una FOTO trascinata dalla galleria (per sostituire).
+    const body = d.querySelector('.rs-body');
+    if(body){
+      body.ondragover = e => { e.preventDefault(); body.classList.add('rs-over'); };
+      body.ondragleave = () => body.classList.remove('rs-over');
+      body.ondrop = e => {
+        e.preventDefault(); body.classList.remove('rs-over');
+        const raw = e.dataTransfer.getData('application/x-ps-photo');
+        if(raw){ try{ const p = JSON.parse(raw); uploadRefFromJob(ph, p.jid, p.ti, p.i); }catch(_){} }
+        else if(e.dataTransfer.files[0]) uploadRef(ph, e.dataTransfer.files[0]);
+      };
+    }
+    box.appendChild(d);
+  });
+}
+
+function pickRefFile(ph){
+  const inp = document.createElement('input');
+  inp.type = 'file';
+  inp.accept = 'image/png,image/jpeg,image/webp';
+  inp.onchange = () => { if(inp.files[0]) uploadRef(ph, inp.files[0]); };
+  inp.click();
+}
+
+// trascinamento di una foto della galleria: porta con sé job/tab/indice
+function dragPhoto(e, jid, ti, i){
+  e.dataTransfer.setData('application/x-ps-photo', JSON.stringify({jid, ti, i}));
+  e.dataTransfer.effectAllowed = 'copy';
+}
+
+// una FOTO gia' generata (dalla galleria) diventa Primo/Ultimo frame di un workflow video:
+// la scarico dal job e la carico come immagine campione, come farebbe un file dal disco.
+async function uploadRefFromJob(ph, jid, ti, i){
+  try{
+    const resp = await fetch(`/api/file?job=${jid}&t=${ti}&i=${i}`);
+    if(!resp.ok) throw new Error(tr('photoNotFound'));
+    const blob = await resp.blob();
+    if(!/^image\//.test(blob.type)) throw new Error(tr('notAPhoto'));
+    const dataUrl = await new Promise((res, rej) => {
+      const fr = new FileReader();
+      fr.onload = () => res(fr.result); fr.onerror = rej;
+      fr.readAsDataURL(blob);
+    });
+    const r = await api('/api/upload_ref', {name: 'frame.png', data: dataUrl});
+    const t = tabs[activeTab];
+    if(!t.refs) t.refs = {};
+    t.refs[ph] = {file: r.file, thumb: await makeRefThumb(dataUrl)};
+    refOpen[ph] = true;
+    saveTabs(); renderRefSlots();
+    showOk(tr('photoAsFrame'));
+  }catch(e){ showErr(tr('errPrefix') + e.message); }
+}
+
+async function uploadRef(ph, file){
+  if(!/^image\/(png|jpe?g|webp)$/.test(file.type)){
+    showErr(tr('imgFormatInvalid')); return;
+  }
+  const dataUrl = await new Promise((res, rej) => {
+    const fr = new FileReader();
+    fr.onload = () => res(fr.result); fr.onerror = rej;
+    fr.readAsDataURL(file);
+  });
+  try{
+    const r = await api('/api/upload_ref', {name: file.name, data: dataUrl});
+    const t = tabs[activeTab];
+    if(!t.refs) t.refs = {};
+    t.refs[ph] = {file: r.file, thumb: await makeRefThumb(dataUrl)};
+    refOpen[ph] = true;
+    saveTabs(); renderRefSlots();
+  }catch(e){ showErr(tr('imgUploadErr', e.message)); }
+}
+
+function makeRefThumb(dataUrl){
+  // miniatura piccola per localStorage (l'originale resta nell'input di ComfyUI)
+  return new Promise(res => {
+    const img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, 120 / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(img.width * k));
+      c.height = Math.max(1, Math.round(img.height * k));
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      res(c.toDataURL('image/jpeg', 0.75));
+    };
+    img.onerror = () => res('');
+    img.src = dataUrl;
+  });
+}
+
+async function reloadImodels(){
+  try{
+    const info = await api('/api/loras');
+    fillImodels(info.image_models || []);
+  }catch(e){}
+}
+
+// ---------------- font chat + barra statistiche ----------------
+function chatFont(delta){
+  const root = document.documentElement;
+  let fs = parseFloat(getComputedStyle(root).getPropertyValue('--chatfs')) || 16;
+  fs = Math.min(26, Math.max(12, fs + delta));
+  root.style.setProperty('--chatfs', fs + 'px');
+  localStorage.setItem('ps_chatfs', fs + 'px');
+}
+
+function toggleStatsbar(){
+  const sb = $('statsbar');
+  sb.classList.toggle('collapsed');
+  localStorage.setItem('ps_statsbar', sb.classList.contains('collapsed') ? '1' : '0');
+  updateStatsbarToggle();
+}
+
+function updateStatsbarToggle(){
+  const collapsed = $('statsbar').classList.contains('collapsed');
+  $('sb-toggle').innerHTML = ico(collapsed ? 'chevD' : 'chevR', 13) +
+    (collapsed ? ' ' + tr('statsWord') : '');
+}
+
+// ---------------- ridimensionamento pannelli (persistente) ----------------
+function initResizers(){
+  const root = document.documentElement;
+  const lw = localStorage.getItem('ps_leftw');
+  if(lw) root.style.setProperty('--leftw', lw);
+  const aw = localStorage.getItem('ps_apw');
+  if(aw) root.style.setProperty('--apw', aw);
+  const fs = localStorage.getItem('ps_chatfs');
+  if(fs) root.style.setProperty('--chatfs', fs);
+  if(localStorage.getItem('ps_statsbar') === '1') $('statsbar').classList.add('collapsed');
+  updateStatsbarToggle();
+
+  let drag = null;   // 'left' | 'agent'
+  $('splitter').addEventListener('mousedown', e => { drag = 'left'; $('splitter').classList.add('drag'); e.preventDefault(); });
+  $('ap-resize').addEventListener('mousedown', e => { drag = 'agent'; $('ap-resize').classList.add('drag'); e.preventDefault(); });
+  document.addEventListener('mousemove', e => {
+    if(!drag) return;
+    if(drag === 'left'){
+      const w = Math.min(760, Math.max(300, e.clientX - document.querySelector('main').getBoundingClientRect().left));
+      root.style.setProperty('--leftw', w + 'px');
+    }else{
+      const w = Math.min(Math.round(window.innerWidth * 0.9), Math.max(380, window.innerWidth - e.clientX));
+      root.style.setProperty('--apw', w + 'px');
+    }
+  });
+  document.addEventListener('mouseup', () => {
+    if(!drag) return;
+    if(drag === 'left') localStorage.setItem('ps_leftw', root.style.getPropertyValue('--leftw'));
+    else localStorage.setItem('ps_apw', root.style.getPropertyValue('--apw'));
+    $('splitter').classList.remove('drag');
+    $('ap-resize').classList.remove('drag');
+    drag = null;
+  });
+}
+
+// ---------------- gestione modelli (download) ----------------
+let modelsTimer = null;
+
+function toggleModels(){
+  const d = $('modeldlg');
+  const open = d.style.display !== 'flex';
+  d.style.display = open ? 'flex' : 'none';
+  clearInterval(modelsTimer);
+  if(open){
+    refreshModels();
+    modelsTimer = setInterval(refreshModels, 1000);
+  }else{
+    reloadImodels();   // aggiorna il menu' dopo eventuali download completati
+  }
+}
+
+function fmtBytes(b){ return b >= 1e9 ? (b/1e9).toFixed(2) + ' GB' : Math.round(b/1e6) + ' MB'; }
+function fmtDur(s){ s = Math.round(s); return s >= 60 ? Math.floor(s/60) + 'm' + String(s%60).padStart(2,'0') + 's' : s + 's'; }
+
+let starterActive = false;           // kit "scarica il necessario" in corso
+let starterReq = null;               // ultima chiave chiesta (evita doppioni nella coda)
+let ESSENTIALS_MISSING = [];         // aggiornato da /api/loras e /api/models_status
+
+function GROUP_INFO_FN(){ return {
+  base:     {n: '1', title: tr('grpBaseTitle'),  sub: tr('grpBaseSub')},
+  image:    {n: '2', title: tr('grpImageTitle'), sub: tr('grpImageSub')},
+  text:     {n: '3', title: tr('grpTextTitle'),  sub: tr('grpTextSub')},
+  video:    {n: '4', title: tr('grpVideoTitle'), sub: tr('grpVideoSub')},
+  optional: {n: '+', title: tr('grpOptTitle'),   sub: tr('grpOptSub')},
+}; }
+
+function starterMissingKeys(cat, starterSet){
+  // chiavi del kit minimo non ancora installate (per il pulsante "scarica il necessario")
+  return (starterSet || []).filter(k => {
+    const m = cat.find(x => x.key === k);
+    return m && !m.installed;
+  });
+}
+
+async function refreshModels(){
+  let s;
+  try{ s = await api('/api/models_status'); }catch(e){ return; }
+  ESSENTIALS_MISSING = s.essentials_missing || [];
+  updateSetupBanner();
+
+  // avanzamento automatico del kit di avvio: parte il prossimo solo quando l'attuale è finito
+  const anyBusy = Object.values(s.downloads).some(d => d.status === 'downloading');
+  const anyErr = Object.values(s.downloads).some(d => d.status === 'error');
+  if(starterActive){
+    const missing = starterMissingKeys(s.catalog, s.starter_set);
+    if(!missing.length){ starterActive = false; starterReq = null; }
+    else if(anyErr){ starterActive = false; }   // ferma la coda: l'utente vede l'errore e ritenta
+    else if(!anyBusy && missing[0] !== starterReq){
+      starterReq = missing[0];
+      api('/api/models_download', {key: missing[0]}).catch(()=>{});
+    }
+  }
+
+  // guida in cima
+  const guide = $('starter-guide');
+  const missNow = starterMissingKeys(s.catalog, s.starter_set);
+  if(!ESSENTIALS_MISSING.length){
+    guide.innerHTML = `<div class="sg ok">${ico('save',14)} ${tr('setupAllReady')}</div>`;
+  }else if(starterActive){
+    guide.innerHTML = `<div class="sg go">${tr('setupDownloading', missNow.length)}</div>`;
+  }else{
+    guide.innerHTML = `<div class="sg go">${tr('setupNeed')}
+      <div style="margin-top:8px">
+        <button class="btn-go" onclick="startStarter()">${ico('play',13)} ${tr('downloadAll')}</button>
+        <span class="hint" style="margin-left:8px">${tr('orPickBelow')}</span>
+      </div></div>`;
+  }
+
+  // lista raggruppata
+  const box = $('model-list');
+  box.innerHTML = '';
+  let lastGroup = null;
+  for(const m of s.catalog){
+    if(m.group !== lastGroup){
+      lastGroup = m.group;
+      const gi = GROUP_INFO_FN()[m.group] || {n:'', title:m.group, sub:''};
+      const h = document.createElement('div');
+      h.className = 'mgroup';
+      h.innerHTML = `<span class="gnum">${gi.n}</span><div><div class="gtitle">${gi.title}</div>
+        <div class="gsub">${gi.sub}</div></div>`;
+      box.appendChild(h);
+    }
+    const dl = s.downloads[m.key];
+    const busy = dl && dl.status === 'downloading';
+    let action;
+    if(m.installed){
+      action = `<span class="ok-ic">${ico('check', 12)} ${tr('installed')}</span>`;
+    }else if(busy){
+      action = `<button class="btn-small" onclick="api('/api/models_cancel',{key:'${m.key}'})">${tr('cancelDl')}</button>`;
+    }else{
+      action = `<button class="btn-go" onclick="starterActive=false;api('/api/models_download',{key:'${m.key}'}).then(refreshModels)">${tr('downloadBtn')}</button>`;
+    }
+    let prog = '';
+    if(busy && dl.phase && dl.phase !== 'scarico'){
+      prog = `<div class="mprog"><div class="spin" style="width:11px;height:11px;display:inline-block;vertical-align:-2px"></div> ${dl.phase}...</div>`;
+    }else if(busy && dl.total){
+      const pct = Math.round(100 * dl.done / dl.total);
+      const speed = dl.speed ? fmtBytes(dl.speed) + '/s' : '';
+      const eta = dl.speed ? Math.round((dl.total - dl.done) / dl.speed) : 0;
+      const etaTxt = eta ? (eta >= 90 ? '~' + Math.round(eta/60) + ' min' : '~' + eta + 's') : '';
+      prog = `<div class="mprog">${tr('fileProg', dl.file_n, dl.files_total, dl.file, fmtBytes(dl.done), fmtBytes(dl.total), pct, speed, etaTxt)}</div>
+        <div class="mbar"><div style="width:${pct}%"></div></div>`;
+    }else if(dl && dl.status === 'error'){
+      prog = `<div class="mprog" style="color:var(--err)">${tr('dlError', (dl.error||'').replace(/</g,'&lt;'))}</div>`;
+    }
+    const star = m.starter && !m.installed ? '<span class="mtag">' + tr('recommended') + '</span>' : '';
+    const row = document.createElement('div');
+    row.className = 'mrow' + (m.installed ? ' done' : '');
+    row.innerHTML = `<div class="mtop"><span class="mname">${m.label}</span>${star}
+      <span class="msize">${m.size_gb} GB</span>${action}</div>
+      <div class="mdesc">${m.desc}</div>${prog}`;
+    box.appendChild(row);
+  }
+}
+
+function startStarter(){
+  starterActive = true;
+  starterReq = null;
+  refreshModels();   // avvia subito il primo mancante
+}
+
+// avviso persistente nella pagina principale quando manca l'essenziale
+function MISS_LABEL_FN(){ return {runtime:tr('missRuntime'), llm_engine:tr('missTextEngine'),
+                    image:tr('missImage'), llm_nemo:tr('missWriter')}; }
+function updateSetupBanner(){
+  const b = $('setup-banner');
+  if(!b) return;
+  if(!ESSENTIALS_MISSING.length){ b.style.display = 'none'; return; }
+  const list = ESSENTIALS_MISSING.map(k => MISS_LABEL_FN()[k] || k).join(', ');
+  b.style.display = 'flex';
+  b.innerHTML = `${ico('alert',15)}<div>${tr('stillMissing')} <b>${list}</b>.
+    <a onclick="openModelsGuide()">${tr('openGuideDl')}</a></div>`;
+}
+function openModelsGuide(){
+  if($('modeldlg').style.display !== 'flex') toggleModels();
+}
+
+// ---------------- agente workflow ----------------
+let AGENT_ID = null, agentTimer = null, agentLlmTimer = null;
+let AG_READY = false, AG_BUSY = false;
+
+function updateSendState(){
+  const btn = $('ap-send');
+  btn.disabled = AG_BUSY || !AG_READY;
+  btn.classList.toggle('pulse', AG_READY && !AG_BUSY);
+}
+
+async function pollAgentLlm(){
+  let s;
+  try{ s = await api('/api/agent_llm_status'); }catch(e){ return; }
+  AG_READY = s.state === 'ready';
+  updateSendState();
+  if(!AG_BUSY){
+    const model = (s.model || '').split('-')[0];
+    if(s.state === 'loading')
+      $('ap-status').innerHTML = `<div class="spin" style="width:13px;height:13px"></div> ${tr('agentLoading', model)}`;
+    else if(s.state === 'ready'){
+      const mode = s.mode === 'fast' ? tr('agentFast') : s.mode === 'safe' ? tr('agentSafe') : '';
+      $('ap-status').innerHTML = `<i class="dot on"></i> ${tr('agentReady', model, mode)}`;
+    }
+    else if(s.state === 'error')
+      $('ap-status').textContent = tr('agentLoadErr', s.error || '');
+    else
+      $('ap-status').textContent = '';
+  }
+}
+
+function AGENT_WELCOME_HTML(){ return '<div class="msg log">' + tr('agentWelcome') + '</div>'; }
+
+function resetAgentUI(stopSession){
+  clearInterval(agentTimer);
+  if(stopSession && AGENT_ID){
+    api(`/api/agent/${AGENT_ID}/cancel`, {}).catch(() => {});
+  }
+  AGENT_ID = null;
+  AG_BUSY = false;
+  $('ap-chat').innerHTML = AGENT_WELCOME_HTML();
+  $('ap-status').textContent = '';
+  $('ap-preview').style.display = 'none';
+  $('ap-name').value = '';
+  updateSendState();
+}
+
+function toggleAgent(){
+  const p = $('agentpanel');
+  p.classList.toggle('open');
+  if(p.classList.contains('open')){
+    const s = $('ap-target');
+    if(!s.options.length){
+      for(const m of IMODELS.filter(m => !m.custom)){
+        const o = document.createElement('option');
+        o.value = m.key; o.textContent = m.label;
+        s.appendChild(o);
+      }
+    }
+    resetAgentUI(false);   // si riparte sempre da una sessione nuova
+    api('/api/agent/warmup', {}).catch(() => {});   // precarica l'LLM agente
+    pollAgentLlm();
+    clearInterval(agentLlmTimer);
+    agentLlmTimer = setInterval(pollAgentLlm, 2500);
+  }else{
+    // chiusura = stop della sessione in corso e reset
+    clearInterval(agentLlmTimer);
+    resetAgentUI(true);
+  }
+}
+
+async function sendAgent(){
+  const msg = $('ap-msg').value.trim();
+  if(!msg) return;
+  $('ap-msg').value = '';
+  try{
+    if(!AGENT_ID){
+      const r = await api('/api/agent/start', {target: $('ap-target').value, message: msg});
+      AGENT_ID = r.id;
+    }else{
+      await api(`/api/agent/${AGENT_ID}/message`, {message: msg});
+    }
+    $('ap-send').disabled = true;
+    pollAgent();
+  }catch(e){ showErr(e.message); }
+}
+
+function pollAgent(){
+  clearInterval(agentTimer);
+  agentTimer = setInterval(async () => {
+    if(!AGENT_ID) return;
+    let a;
+    try{ a = await api('/api/agent/' + AGENT_ID); }catch(e){ return; }
+    renderAgent(a);
+    if(['ready','waiting','failed','error','cancelled'].includes(a.status)) clearInterval(agentTimer);
+  }, 1000);
+}
+
+function renderAgent(a){
+  const chat = $('ap-chat');
+  const atBottom = chat.scrollHeight - chat.scrollTop - chat.clientHeight < 60;
+  let html = a.chat.map(m =>
+    `<div class="msg ${m.role}">${(m.text || '').replace(/</g,'&lt;')}</div>`).join('');
+  if(a.stream)   // risposta in arrivo, token per token
+    html += `<div class="msg agent streaming">${a.stream.replace(/</g,'&lt;')}</div>`;
+  chat.innerHTML = html;
+  if(atBottom || a.stream) chat.scrollTop = chat.scrollHeight;
+  const busy = ['queued','loading','working','testing'].includes(a.status);
+  AG_BUSY = busy;
+  const labels = {queued:tr('agQueued'), loading:tr('agLoading'), working:tr('agWorking'),
+                  testing:tr('agTesting'), ready:'', waiting:'', failed:'', error:'', cancelled:''};
+  if(busy){
+    $('ap-status').innerHTML =
+      `<div class="spin" style="width:13px;height:13px"></div> ${labels[a.status] || a.status}` +
+      (a.iteration ? ` (${tr('agIteration', a.iteration)})` : '') +
+      (a.stream && a.tps ? ` — ${a.tps} token/s` : '') +
+      (a.test_prog && a.test_prog[1] ? ` — step ${a.test_prog[0]}/${a.test_prog[1]}` : '') +
+      ` <button class="btn-small" style="margin-left:auto" onclick="stopAgent()">${tr('stop')}</button>`;
+  }
+  updateSendState();
+  const showPrev = a.status === 'ready' && a.has_preview;
+  $('ap-preview').style.display = showPrev ? 'flex' : 'none';
+  if(showPrev) $('ap-img').src = `/api/agent/${AGENT_ID}/preview?t=${a.iteration}`;
+}
+
+async function stopAgent(){
+  if(!AGENT_ID) return;
+  try{ await api(`/api/agent/${AGENT_ID}/cancel`, {}); }catch(e){ showErr(e.message); }
+}
+
+async function saveAgentWorkflow(){
+  const name = $('ap-name').value.trim();
+  if(!name){ showErr(tr('nameWf')); return; }
+  try{
+    const r = await api(`/api/agent/${AGENT_ID}/save`, {name});
+    await reloadImodels();
+    $('ap-name').value = '';
+    const chat = $('ap-chat');
+    chat.innerHTML += `<div class="msg log">${tr('wfSaved', name)}</div>`;
+    chat.scrollTop = chat.scrollHeight;
+  }catch(e){ showErr(e.message); }
+}
+
+function lightboxUrl(src){
+  LB.jid = null; LB.list = []; LB.pos = 0;
+  lbResetZoom();
+  $('lb-img').src = src;
+  $('lb-cap').textContent = '';
+  $('lb-prev').style.display = 'none';
+  $('lb-next').style.display = 'none';
+  $('lb-del').style.display = 'none';
+  $('lightbox').style.display = 'flex';
+}
+
+let PRESETS = [], dlgTarget = null;
+
+async function loadPresets(){
+  try{
+    PRESETS = (await api('/api/presets')).presets || [];
+  }catch(e){ return; }
+  const box = $('presets');
+  if(!PRESETS.length){
+    box.innerHTML = '<span class="hint">' + tr('presetsEmpty') + '</span>';
+    return;
+  }
+  box.innerHTML = '';
+  for(const p of PRESETS){
+    const d = document.createElement('div');
+    d.className = 'preset';
+    d.title = `${p.name}\nseed ${p.seed} · ${p.image_model} · ${p.width}×${p.height} · ${p.steps} steps`;
+    d.innerHTML = `<img src="${p.thumb}"><span class="nm">${p.name.replace(/</g,'&lt;')}</span>
+      <span class="px" title="${tr('delCharT')}">${ico('x', 10)}</span>`;
+    d.onclick = () => applyPreset(p.id);
+    d.querySelector('.px').onclick = e => { e.stopPropagation(); delPreset(p.id); };
+    box.appendChild(d);
+  }
+}
+
+function applyPreset(pid){
+  const p = PRESETS.find(x => x.id === pid);
+  if(!p) return;
+  commitForm();
+  const t = tabs[activeTab];
+  t.seed = String(p.seed);
+  t.imodel = p.image_model;
+  t.steps = p.steps;
+  t.size = p.width + 'x' + p.height;
+  if(p.soggetto) t.soggetto = p.soggetto;
+  t.loras = Object.fromEntries((p.loras || []).map(l => [l.name, l.strength]));
+  saveTabs(); renderForm();
+}
+
+async function delPreset(pid){
+  try{
+    await api('/api/presets/delete', {id: pid});
+    loadPresets();
+  }catch(e){ showErr(tr('errPrefix') + e.message); }
+}
+
+function openNameDlg(jid, ti, i){
+  dlgTarget = {job: jid, tab: ti, i};
+  const j = window['job_' + jid];
+  const im = j && j.tabs[ti].images[i];
+  $('dlg-img').src = `/api/file?job=${jid}&t=${ti}&i=${i}`;
+  $('dlg-info').textContent = im ? `seed ${im.seed} · ${j.tabs[ti].image_model} · ${j.tabs[ti].width}×${j.tabs[ti].height}` : '';
+  $('dlg-name').value = '';
+  $('namedlg').style.display = 'flex';
+  $('dlg-name').focus();
+}
+
+function closeNameDlg(){ $('namedlg').style.display = 'none'; dlgTarget = null; }
+
+async function confirmPreset(){
+  const name = $('dlg-name').value.trim();
+  if(!name || !dlgTarget){ showErr(tr('errName')); return; }
+  try{
+    await api('/api/presets/save', {...dlgTarget, name});
+    closeNameDlg();
+    loadPresets();
+  }catch(e){ showErr(tr('errPrefix') + e.message); }
+}
+
+async function removeJob(jid){
+  try{
+    await api(`/api/job/${jid}/remove`, {});
+    const c = document.getElementById('job-' + jid);
+    if(c) c.remove();
+    delete renderCache[jid];
+  }catch(e){ showErr(tr('errPrefix') + e.message); }
+}
+
+async function deleteImage(jid, ti, i){
+  try{
+    await api(`/api/job/${jid}/delete_image`, {tab: ti, i});
+    delete renderCache[jid];
+    refreshJobs();
+  }catch(e){ showErr(tr('errPrefix') + e.message); }
+}
+
+// ---------------- lightbox: navigazione + zoom ----------------
+const LB = {jid: null, list: [], pos: 0, z: 1, tx: 0, ty: 0};
+let lbDrag = null;
+
+function lightbox(jid, ti, i){
+  const j = window['job_' + jid];
+  LB.jid = jid;
+  LB.list = [];
+  if(j) j.tabs.forEach((t, a) => t.images.forEach((im, b) => { if(im.has_file) LB.list.push([a, b]); }));
+  if(!LB.list.length) LB.list = [[ti, i]];
+  LB.pos = Math.max(0, LB.list.findIndex(p => p[0] === ti && p[1] === i));
+  lbShow();
+}
+
+function lbShow(){
+  const [ti, i] = LB.list[LB.pos];
+  const j = window['job_' + LB.jid];
+  lbResetZoom();
+  const im = j ? j.tabs[ti].images[i] : null;
+  const fsrc = `/api/file?job=${LB.jid}&t=${ti}&i=${i}`;
+  const lbVid = $('lb-vid'), lbImg = $('lb-img');
+  if(im && im.video){
+    lbImg.style.display = 'none'; lbImg.src = '';
+    lbVid.src = fsrc; lbVid.style.display = 'block';
+    try{ lbVid.currentTime = 0; lbVid.play(); }catch(e){}
+  }else{
+    lbVid.pause(); lbVid.removeAttribute('src'); lbVid.load(); lbVid.style.display = 'none';
+    lbImg.src = fsrc; lbImg.style.display = 'block';
+  }
+  $('lb-cap').textContent = im ? ((im.score != null && im.score_note ? tr('voteLine', im.score||'?', im.score_note) + '\n' : '') + (im.prompt || '')) : '';
+  $('lb-score').innerHTML = im ? scoreBadge(im.score, true) : '';
+  const many = LB.list.length > 1;
+  $('lb-prev').style.display = many ? 'flex' : 'none';
+  $('lb-next').style.display = many ? 'flex' : 'none';
+  $('lb-del').style.display = LB.jid ? 'flex' : 'none';
+  $('lightbox').style.display = 'flex';
+}
+
+function lbStep(d){
+  if(LB.list.length < 2 || !LB.jid) return;
+  LB.pos = (LB.pos + d + LB.list.length) % LB.list.length;
+  lbShow();
+}
+
+function lbClose(){ try{ $('lb-vid').pause(); }catch(e){} $('lightbox').style.display = 'none'; }
+
+async function lbDelete(){
+  if(!LB.jid || !LB.list.length) return;
+  const [ti, i] = LB.list[LB.pos];
+  try{
+    const r = await api(`/api/job/${LB.jid}/delete_image`, {tab: ti, i});
+    delete renderCache[LB.jid];
+    refreshJobs();
+    if(r.job_removed){   // era l'ultima foto: il job se n'e' andato con lei
+      lbClose();
+      showOk(tr('lastPhotoDeleted'));
+      return;
+    }
+  }catch(e){ showErr(tr('errPrefix') + e.message); return; }
+  LB.list.splice(LB.pos, 1);            // via dalla sequenza del visore
+  if(!LB.list.length){ lbClose(); return; }
+  if(LB.pos >= LB.list.length) LB.pos = LB.list.length - 1;
+  lbShow();
+}
+
+function lbResetZoom(){ LB.z = 1; LB.tx = 0; LB.ty = 0; lbApply(); }
+
+function lbApply(){
+  $('lb-img').style.transform = LB.z === 1 ? '' : `translate(${LB.tx}px, ${LB.ty}px) scale(${LB.z})`;
+  $('lb-img').style.cursor = LB.z > 1 ? (lbDrag ? 'grabbing' : 'grab') : 'zoom-in';
+}
+
+// ---------------- menu tasto destro: rigenera da un prompt ----------------
+let ctxTarget = null;
+function showCtx(e, jid, ti, i){
+  ctxTarget = {jid, ti, i};
+  const m = $('ctxmenu');
+  m.innerHTML =
+    `<button onclick="regen(1)">${ico('play',13)} ${tr('ctxRegen1')}</button>` +
+    `<button onclick="regen(4)">${ico('play',13)} ${tr('ctxRegen4')}</button>` +
+    `<button onclick="regenMod(4)">${ico('play',13)} ${tr('ctxRegenMod')}</button>` +
+    `<button onclick="loadPhotoToEditor()">${ico('plus',13)} ${tr('ctxLoadEditor')}</button>` +
+    `<button onclick="animatePhoto()">${ico('film', 13)} ${tr('ctxAnimate')}</button>`;
+  m.style.display = 'block';
+  m.style.left = Math.min(e.clientX, window.innerWidth  - m.offsetWidth  - 8) + 'px';
+  m.style.top  = Math.min(e.clientY, window.innerHeight - m.offsetHeight - 8) + 'px';
+}
+function hideCtx(){ $('ctxmenu').style.display = 'none'; }
+
+async function animatePhoto(){
+  const tgt = ctxTarget;
+  hideCtx();
+  if(!tgt) return;
+  const _opts = videoWfOptions('start');
+  const wf = _opts.find(m => m.key === VWF.start) || _opts[0];
+  if(!wf){
+    showErr(tr('videoNotReady'));
+    return;
+  }
+  try{
+    // scarico la foto generata e la ricarico come immagine campione (primo frame)
+    const resp = await fetch(`/api/file?job=${tgt.jid}&t=${tgt.ti}&i=${tgt.i}`);
+    if(!resp.ok) throw new Error(tr('photoNotFound'));
+    const blob = await resp.blob();
+    const dataUrl = await new Promise((res, rej) => {
+      const fr = new FileReader();
+      fr.onload = () => res(fr.result); fr.onerror = rej;
+      fr.readAsDataURL(blob);
+    });
+    const r = await api('/api/upload_ref', {name: 'anima.png', data: dataUrl});
+    const t = tabs[activeTab];
+    if((t.cmode || 'photo') !== 'video'){       // cassetti indipendenti anche da qui
+      commitForm(); stashModeCfg(t); t.cmode = 'video'; popModeCfg(t);
+    }
+    t.vmode = 'start';                          // scheda in modalita' VIDEO > Foto + testo
+    t.imodel = wf.key;
+    if(!t.refs) t.refs = {};
+    const ph = (wf.ref_slots && wf.ref_slots[0]) || '{REF_IMAGE}';
+    t.refs[ph] = {file: r.file, thumb: await makeRefThumb(dataUrl)};
+    t.steps = wf.steps || t.steps;
+    saveTabs(); renderForm();
+    window.scrollTo({top: 0, behavior: 'smooth'});
+    showOk(tr('photoHookedFrame'));
+  }catch(e){ showErr(tr('errPrefix') + e.message); }
+}
+
+async function regen(count){
+  const t = ctxTarget;
+  hideCtx();
+  if(!t) return;
+  try{
+    const r = await api('/api/regen', {job: t.jid, tab: t.ti, i: t.i, count});
+    delete renderCache[r.job_id];
+    refreshJobs();
+    showOk(tr('regenReinserted'));
+  }catch(e){ showErr(tr('errPrefix') + e.message); }
+}
+
+async function regenMod(count){
+  const t = ctxTarget;
+  hideCtx();
+  if(!t) return;
+  const mod = prompt(tr('regenModPrompt'));
+  if(mod === null) return;                 // annullato
+  const modify = mod.trim();
+  if(!modify){ showErr(tr('noChange')); return; }
+  try{
+    const r = await api('/api/regen', {job: t.jid, tab: t.ti, i: t.i, count, modify, launch: true});
+    delete renderCache[r.job_id];
+    refreshJobs();
+    showOk(tr('regenModStarted', count, modify));
+  }catch(e){ showErr(tr('errPrefix') + e.message); }
+}
+
+async function loadPhotoToEditor(){
+  const t = ctxTarget;
+  hideCtx();
+  if(!t) return;
+  try{
+    const r = await api('/api/loadtab', {job: t.jid, tab: t.ti, i: t.i});
+    commitForm();
+    tabs.push(r.tab);
+    activeTab = tabs.length - 1;
+    saveTabs();
+    renderForm();
+    if($('lightbox') && $('lightbox').style.display === 'flex') lbClose();
+    showOk(tr('loadedToTab'));
+  }catch(e){ showErr(tr('errPrefix') + e.message); }
+}
+
+function initLightbox(){
+  const box = $('lightbox'), img = $('lb-img');
+  document.addEventListener('click', hideCtx);
+  document.addEventListener('scroll', hideCtx, true);
+  box.addEventListener('contextmenu', e => {   // tasto destro anche sull'anteprima ingrandita
+    if(!LB.jid) return;
+    e.preventDefault();
+    const [ti, i] = LB.list[LB.pos];
+    showCtx(e, LB.jid, ti, i);
+  });
+  $('lb-prev').innerHTML = ico('chevL', 22);
+  $('lb-next').innerHTML = ico('chevR', 22);
+  $('lb-close').innerHTML = ico('x', 18);
+  $('lb-del').innerHTML = ico('trash', 17);
+  $('lb-folder').innerHTML = ico('folder', 17);
+  $('lb-folder').onclick = async () => {
+    if(!LB.jid || !LB.list.length) return;
+    const [ti, i] = LB.list[LB.pos];
+    try{ await api('/api/open_folder', {job: LB.jid, tab: ti, i}); }
+    catch(e){ showErr(tr('errPrefix') + e.message); }
+  };
+  $('lb-prev').onclick = () => lbStep(-1);
+  $('lb-next').onclick = () => lbStep(1);
+  $('lb-close').onclick = lbClose;
+  $('lb-del').onclick = lbDelete;
+  // click sullo sfondo (fuori dall'immagine e dai controlli) = chiudi
+  box.onclick = e => {
+    if(e.target === box || e.target.classList.contains('lb-stage')) lbClose();
+  };
+  // frecce della tastiera + Esc
+  document.addEventListener('keydown', e => {
+    if(box.style.display !== 'flex') return;
+    if(e.key === 'ArrowRight'){ e.preventDefault(); lbStep(1); }
+    else if(e.key === 'ArrowLeft'){ e.preventDefault(); lbStep(-1); }
+    else if(e.key === 'Escape') lbClose();
+  });
+  // rotella: SULLA foto = zoom verso il punto del mouse (max 5x); FUORI dalla foto
+  // (o su un video) = passa alla foto precedente/successiva secondo il verso.
+  box.addEventListener('wheel', e => {
+    if(box.style.display !== 'flex') return;
+    e.preventDefault();
+    const vid = $('lb-vid');
+    const media = img.style.display !== 'none' ? img : vid;
+    const mr = media.getBoundingClientRect();
+    const over = e.clientX >= mr.left && e.clientX <= mr.right &&
+                 e.clientY >= mr.top && e.clientY <= mr.bottom;
+    if(!over || media === vid){
+      lbStep(e.deltaY > 0 ? 1 : -1);
+      return;
+    }
+    const z2 = Math.min(5, Math.max(1, LB.z * (e.deltaY < 0 ? 1.2 : 1 / 1.2)));
+    if(z2 === LB.z) return;
+    if(z2 <= 1.001){ lbResetZoom(); return; }
+    const r = img.getBoundingClientRect();
+    const dx = e.clientX - (r.left + r.width / 2);
+    const dy = e.clientY - (r.top + r.height / 2);
+    LB.tx += dx * (1 - z2 / LB.z);
+    LB.ty += dy * (1 - z2 / LB.z);
+    LB.z = z2;
+    lbApply();
+  }, {passive: false});
+  // trascina per spostarti quando sei ingrandito
+  img.ondragstart = () => false;
+  img.addEventListener('mousedown', e => {
+    if(LB.z <= 1) return;
+    e.preventDefault();
+    lbDrag = {x: e.clientX, y: e.clientY};
+    lbApply();
+  });
+  document.addEventListener('mousemove', e => {
+    if(!lbDrag) return;
+    LB.tx += e.clientX - lbDrag.x;
+    LB.ty += e.clientY - lbDrag.y;
+    lbDrag = {x: e.clientX, y: e.clientY};
+    lbApply();
+  });
+  document.addEventListener('mouseup', () => { if(lbDrag){ lbDrag = null; lbApply(); } });
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

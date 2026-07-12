@@ -1,0 +1,28 @@
+{
+  "meta": {
+    "name": "Klein HQ (ricontrollo post)",
+    "target": "klein",
+    "steps": 6,
+    "lora_chain": {"model": "1", "clip": "2"},
+    "note": "FLUX.2 Klein 9B con secondo passaggio di rifinitura: render base a {STEPS} step, poi ri-rumore parziale (denoise 0.22, ~4 step) sullo stesso latente con lo stesso conditioning — pelle, mani e dettagli fini vengono ricontrollati SENZA cambiare la composizione (denoise 0.4 la stravolgeva: verificato). Costo ~ +60% tempo. Supporta le LoRA della scheda via meta.lora_chain."
+  },
+  "graph": {
+    "1": {"class_type": "UnetLoaderGGUF", "inputs": {"unet_name": "flux-2-klein-9b-Q6_K.gguf"}},
+    "2": {"class_type": "CLIPLoader", "inputs": {"clip_name": "qwen_3_8b_fp8mixed.safetensors", "type": "flux2", "device": "default"}},
+    "3": {"class_type": "VAELoader", "inputs": {"vae_name": "flux2-vae.safetensors"}},
+    "5": {"class_type": "CLIPTextEncode", "inputs": {"clip": ["2", 0], "text": "{PROMPT}"}},
+    "6": {"class_type": "ConditioningZeroOut", "inputs": {"conditioning": ["5", 0]}},
+    "7": {"class_type": "CFGGuider", "inputs": {"model": ["1", 0], "positive": ["5", 0], "negative": ["6", 0], "cfg": 1.0}},
+    "8": {"class_type": "Flux2Scheduler", "inputs": {"steps": "{STEPS}", "width": "{WIDTH}", "height": "{HEIGHT}"}},
+    "9": {"class_type": "KSamplerSelect", "inputs": {"sampler_name": "euler"}},
+    "10": {"class_type": "RandomNoise", "inputs": {"noise_seed": "{SEED}"}},
+    "11": {"class_type": "EmptyFlux2LatentImage", "inputs": {"width": "{WIDTH}", "height": "{HEIGHT}", "batch_size": 1}},
+    "12": {"class_type": "SamplerCustomAdvanced", "inputs": {"noise": ["10", 0], "guider": ["7", 0], "sampler": ["9", 0], "sigmas": ["8", 0], "latent_image": ["11", 0]}},
+    "15": {"class_type": "Flux2Scheduler", "inputs": {"steps": 18, "width": "{WIDTH}", "height": "{HEIGHT}"}},
+    "16": {"class_type": "SplitSigmasDenoise", "inputs": {"sigmas": ["15", 0], "denoise": 0.22}},
+    "17": {"class_type": "RandomNoise", "inputs": {"noise_seed": "{SEED}"}},
+    "18": {"class_type": "SamplerCustomAdvanced", "inputs": {"noise": ["17", 0], "guider": ["7", 0], "sampler": ["9", 0], "sigmas": ["16", 1], "latent_image": ["12", 0]}},
+    "13": {"class_type": "VAEDecode", "inputs": {"samples": ["18", 0], "vae": ["3", 0]}},
+    "14": {"class_type": "SaveImage", "inputs": {"images": ["13", 0], "filename_prefix": "{PREFIX}"}}
+  }
+}
