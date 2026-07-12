@@ -49,6 +49,10 @@ __pycache__/
 *.py[cod]
 *.pyc
 
+# --- Local maintainer tools (contain machine-specific paths) ---
+/Rilascia_Versione.ps1
+release.token
+
 # --- Logs & temp ---
 *.log
 *.part
