@@ -35,7 +35,7 @@ COMFY_URL = "http://127.0.0.1:8188"
 APP_VERSION = "1.0.0"
 # Repository GitHub da cui scaricare gli aggiornamenti ("utente/repo"). Override in config.json
 # ("github_repo") o dalla finestra "Modelli" nell'interfaccia. Vuoto = auto-aggiornamento disattivato.
-GITHUB_REPO_DEFAULT = ""
+GITHUB_REPO_DEFAULT = "apatassini/prompt-studio"
 LLAMA_URL = f"http://127.0.0.1:{LLAMA_PORT}"
 
 # Percorsi relativi alla posizione di questo file: <root>\LLM\app\server.py
