@@ -32,7 +32,7 @@ COMFY_URL = "http://127.0.0.1:8188"
 
 # Versione dell'app: confrontata col tag dell'ultima Release su GitHub per l'auto-aggiornamento.
 # Per pubblicare una nuova versione: alza APP_VERSION, committa, crea una Release con tag "vX.Y.Z".
-APP_VERSION = "1.0.1"
+APP_VERSION = "1.0.2"
 # Repository GitHub da cui scaricare gli aggiornamenti ("utente/repo"). Override in config.json
 # ("github_repo") o dalla finestra "Modelli" nell'interfaccia. Vuoto = auto-aggiornamento disattivato.
 GITHUB_REPO_DEFAULT = "apatassini/prompt-studio"
@@ -2257,8 +2257,10 @@ def _do_update():
             raise RuntimeError("URL aggiornamento mancante: esegui prima il controllo.")
         tmp = tempfile.mkdtemp(prefix="ps_update_")
         zip_path = os.path.join(tmp, "update.zip")
-        req = urllib.request.Request(url, headers={"User-Agent": "PromptStudio-Updater",
-                                                   "Accept": "application/octet-stream"})
+        # NB: niente "Accept: application/octet-stream" — l'endpoint zipball dell'API GitHub
+        # lo rifiuta con 415. Senza Accept segue il redirect e scarica lo zip (vale anche per
+        # il browser_download_url di un eventuale asset app.zip).
+        req = urllib.request.Request(url, headers={"User-Agent": "PromptStudio-Updater"})
         with urllib.request.urlopen(req, timeout=180) as r, open(zip_path, "wb") as f:
             shutil.copyfileobj(r, f)
         _UPDATE.update({"phase": "applying", "msg": "Estraggo i file…"})
