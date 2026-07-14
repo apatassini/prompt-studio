@@ -1,5 +1,15 @@
 # Prompt Studio
 
+<p align="center">
+  <a href="https://github.com/apatassini/prompt-studio/releases/latest/download/bootstrap.zip"><img src="https://img.shields.io/badge/⬇%20DOWNLOAD-bootstrap.zip%20(~11%20MB)-2ea44f?style=for-the-badge&logo=windows" alt="Download Prompt Studio"></a>
+  &nbsp;
+  <a href="https://github.com/apatassini/prompt-studio/releases/latest"><img src="https://img.shields.io/badge/All%20downloads-Releases-24292f?style=for-the-badge&logo=github" alt="All releases"></a>
+</p>
+
+> ## ▶ [**Download Prompt Studio (bootstrap.zip, ~11 MB)**](https://github.com/apatassini/prompt-studio/releases/latest/download/bootstrap.zip)
+> Ready to run: **extract the zip** and launch `ComfyUI_windows_portable/Avvia_Prompt_Studio.bat`. On first start the app downloads what it needs.
+> _(The zip is on the [Releases](https://github.com/apatassini/prompt-studio/releases/latest) page — GitHub keeps downloadable files there, not in the source tree above.)_
+
 A local web app that turns plain-language descriptions into **coherent photo sets and image-to-video clips**, on top of [ComfyUI](https://github.com/comfyanonymous/ComfyUI) and [llama.cpp](https://github.com/ggml-org/llama.cpp). Everything runs on your own machine.
 
 You write a *setting* for each tab; a local LLM writes and self-repairs the image prompts in English; ComfyUI renders the photos (or animates them into video); an optional local vision model scores the results so you can filter the good ones. The UI is **bilingual (English / Italian)** with a toggle in the header.
