@@ -7,6 +7,10 @@ You write a *setting* for each tab; a local LLM writes and self-repairs the imag
 > **Made by [Persoft](https://persoft.it)** — custom software & AI solutions. Contact: [info@persoft.it](mailto:info@persoft.it) · <https://persoft.it>
 
 <p align="center">
+  <img src="docs/app-screenshot.jpg" width="92%" alt="Prompt Studio — the local bilingual (EN/IT) web interface">
+</p>
+
+<p align="center">
   <img src="docs/example-hiking.jpg" width="42%" alt="AI-generated hiking photo produced with Prompt Studio">
   &nbsp;&nbsp;
   <img src="docs/example-camp.jpg" width="42%" alt="AI-generated camping photo produced with Prompt Studio">
