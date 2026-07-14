@@ -6,6 +6,13 @@ You write a *setting* for each tab; a local LLM writes and self-repairs the imag
 
 > **Made by [Persoft](https://persoft.it)** — custom software & AI solutions. Contact: [info@persoft.it](mailto:info@persoft.it) · <https://persoft.it>
 
+<p align="center">
+  <img src="docs/example-hiking.jpg" width="42%" alt="AI-generated hiking photo produced with Prompt Studio">
+  &nbsp;&nbsp;
+  <img src="docs/example-camp.jpg" width="42%" alt="AI-generated camping photo produced with Prompt Studio">
+</p>
+<p align="center"><sub>Two chapters of a chronological "photo-director" story, generated locally with Prompt Studio (FLUX.2 Klein + a character LoRA). The person shown is an AI-generated persona.</sub></p>
+
 > ⚠️ **Adult content.** Prompt Studio can be used to generate explicit imagery. Use it responsibly and legally. You are solely responsible for what you generate and for complying with the license of every model you download (see *Third-party components* below). Do not use it to create illegal content or non-consensual imagery of real people.
 
 ---
@@ -32,7 +39,8 @@ You write a *setting* for each tab; a local LLM writes and self-repairs the imag
 
 ## Install
 
-**Easy path (packaged installer).** Download the packaged installer from the [Releases](../../releases) page (a small bootstrap that ships a mini-Python + the UI), run `Installa_Prompt_Studio.bat`, and let the built-in **Models** window download the 4 essentials (image engine, text engine, an image model, the prompt writer). See [`installer/LEGGIMI.txt`](installer/LEGGIMI.txt).
+**Easy path (recommended).** From the [**latest release**](../../releases/latest), download **`bootstrap.zip`** (~11 MB — mini-Python + the app + launchers), extract it anywhere, and run `ComfyUI_windows_portable/Avvia_Prompt_Studio.bat`. On first launch the **Models** window opens and downloads the 4 essentials (image engine, text engine, an image model, the prompt writer), with progress and resume. See [`installer/LEGGIMI.txt`](installer/LEGGIMI.txt).
+_(The release also ships `app.zip` — just the UI files — for updating an existing install; but the app updates itself, see below.)_
 
 **From source (developers).** This repository contains the source only (no binaries or models). Place the [`app/`](app) folder into your ComfyUI portable tree as `ComfyUI_windows_portable/LLM/app`, copy the [`launchers/`](launchers) `.bat` files next to `ComfyUI_windows_portable`, then run `Avvia_Prompt_Studio.bat`. The app serves the UI at <http://127.0.0.1:8500> and drives ComfyUI over its HTTP API.
 
