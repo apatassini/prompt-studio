@@ -1,14 +1,14 @@
 # Prompt Studio
 
 <p align="center">
-  <a href="https://github.com/apatassini/prompt-studio/releases/latest/download/bootstrap.zip"><img src="https://img.shields.io/badge/⬇%20DOWNLOAD-bootstrap.zip%20(~11%20MB)-2ea44f?style=for-the-badge&logo=windows" alt="Download Prompt Studio"></a>
+  <a href="https://github.com/apatassini/prompt-studio/releases/latest/download/PromptStudio-Installer.zip"><img src="https://img.shields.io/badge/⬇%20DOWNLOAD-Installer%20(~11%20MB)-2ea44f?style=for-the-badge&logo=windows" alt="Download the Prompt Studio installer"></a>
   &nbsp;
   <a href="https://github.com/apatassini/prompt-studio/releases/latest"><img src="https://img.shields.io/badge/All%20downloads-Releases-24292f?style=for-the-badge&logo=github" alt="All releases"></a>
 </p>
 
-> ## ▶ [**Download Prompt Studio (bootstrap.zip, ~11 MB)**](https://github.com/apatassini/prompt-studio/releases/latest/download/bootstrap.zip)
-> Ready to run: **extract the zip** and launch `ComfyUI_windows_portable/Avvia_Prompt_Studio.bat`. On first start the app downloads what it needs.
-> _(The zip is on the [Releases](https://github.com/apatassini/prompt-studio/releases/latest) page — GitHub keeps downloadable files there, not in the source tree above.)_
+> ## ▶ [**Download the Prompt Studio installer (~11 MB)**](https://github.com/apatassini/prompt-studio/releases/latest/download/PromptStudio-Installer.zip)
+> **Windows.** Extract the zip and double-click **`Installa_Prompt_Studio.bat`** — it installs everything, creates desktop icons and starts the app. On first launch the built-in **Models** window downloads what it needs.
+> _(GitHub keeps downloadable files on the [Releases](https://github.com/apatassini/prompt-studio/releases/latest) page, not in the source tree above.)_
 
 A local web app that turns plain-language descriptions into **coherent photo sets and image-to-video clips**, on top of [ComfyUI](https://github.com/comfyanonymous/ComfyUI) and [llama.cpp](https://github.com/ggml-org/llama.cpp). Everything runs on your own machine.
 
@@ -53,8 +53,8 @@ You write a *setting* for each tab; a local LLM writes and self-repairs the imag
 
 ## Install
 
-**Easy path (recommended).** From the [**latest release**](../../releases/latest), download **`bootstrap.zip`** (~11 MB — mini-Python + the app + launchers), extract it anywhere, and run `ComfyUI_windows_portable/Avvia_Prompt_Studio.bat`. On first launch the **Models** window opens and downloads the 4 essentials (image engine, text engine, an image model, the prompt writer), with progress and resume. See [`installer/LEGGIMI.txt`](installer/LEGGIMI.txt).
-_(The release also ships `app.zip` — just the UI files — for updating an existing install; but the app updates itself, see below.)_
+**Easy path (recommended).** Download the [**installer**](https://github.com/apatassini/prompt-studio/releases/latest/download/PromptStudio-Installer.zip) (~11 MB), extract it, and double-click **`Installa_Prompt_Studio.bat`**. It unpacks a mini-Python + the app, creates desktop icons, and starts the app. On first launch the **Models** window opens and downloads the 4 essentials (image engine, text engine, an image model, the prompt writer), with progress and resume. See [`installer/LEGGIMI.txt`](installer/LEGGIMI.txt).
+_(The release also ships `bootstrap.zip` and `app.zip` separately, in case you want to unpack them by hand; but the installer does it all for you.)_
 
 **From source (developers).** This repository contains the source only (no binaries or models). Place the [`app/`](app) folder into your ComfyUI portable tree as `ComfyUI_windows_portable/LLM/app`, copy the [`launchers/`](launchers) `.bat` files next to `ComfyUI_windows_portable`, then run `Avvia_Prompt_Studio.bat`. The app serves the UI at <http://127.0.0.1:8500> and drives ComfyUI over its HTTP API.
 
